@@ -1,0 +1,8 @@
+# Called from scons with appropriate python version
+import sys
+from distutils.core import setup
+sys.dont_write_bytecode = True
+from bletchley_version import BLETCHLEY_VERSION
+sys.dont_write_bytecode = False
+
+setup(name='bletchley', version=BLETCHLEY_VERSION, package_dir={'':'lib'}, packages=['bletchley'])
