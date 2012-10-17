@@ -1,0 +1,162 @@
+#!/usr/bin/env python
+
+# Requires Python 2.7+
+
+'''
+This script reads a raw HTTP request from stdin and writes to stdout
+a Python script.  The generated script sends the same (or a very similar) 
+request using the httplib/http.client libraries.
+
+Certainly if you have a raw request, you could simply send it via TCP
+sockets, but if for some reason the server behaves oddly with flow control,
+insists on using gzip/deflate encoding, insists on using chunked encoding,
+or any number of other annoying things, then using an HTTP library is a 
+lot more convenient.  This script attempts to make that conversion easy.
+
+
+Copyright (C) 2011-2012 Virtual Security Research, LLC
+Author: Timothy D. Morgan
+
+ This program is free software: you can redistribute it and/or modify
+ it under the terms of the GNU Lesser General Public License, version 3,
+ as published by the Free Software Foundation.
+
+ This program is distributed in the hope that it will be useful,
+ but WITHOUT ANY WARRANTY; without even the implied warranty of
+ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ GNU General Public License for more details.
+
+ You should have received a copy of the GNU General Public License
+ along with this program.  If not, see <http://www.gnu.org/licenses/>.
+'''
+
+
+import sys
+import argparse
+try:
+    from lxml import etree
+except:
+    sys.stderr.write('ERROR: Could not import lxml module.  Ensure it is installed.\n')
+    sys.stderr.write('       Under Debian, the package name is "python-lxml"\n.')
+    sys.exit(1)
+
+parser = argparse.ArgumentParser(description='Process some integers.')
+parser.add_argument('requestfile', type=file, nargs='?', default=sys.stdin, 
+                    help='A file containing an HTTP request.  Defaults to stdin if omitted.')
+parser.add_argument('--burp', action='store_true', help='Input file is a XML export from Burp. (First request in file is used.)')
+args = parser.parse_args()
+
+if args.burp:
+    safe_parser = etree.ETCompatXMLParser(resolve_entities=False)
+    root = etree.parse(args.requestfile, parser=safe_parser)
+    input_req = root.xpath('/items/item/request')[0].text
+    root = None
+else:
+    input_req = args.requestfile.read()
+
+
+print('''#!/usr/bin/env python
+
+import sys
+# function with either Python 2.7 or 3.x
+try:
+    import http.client as httpc
+except:
+    import httplib as httpc
+''')
+
+
+if '\r\n\r\n' in input_req:
+    raw_headers,body = input_req.split('\r\n\r\n', 1)
+elif '\n\n' in input_req:
+    raw_headers,body = input_req.split('\n\n', 1)
+else:
+    raw_headers = input_req
+    body = ''
+
+header_lines = raw_headers.split('\n')
+method,path,version = header_lines[0].split(' ', 2)
+
+host = 'TODO'
+port = 0
+use_ssl = False
+
+headers = []
+for l in header_lines[1:]:
+    if len(l) < 1: 
+        break
+    # Handle header line continuations
+    if l[0] == '\t':
+        if len(headers) == 0:
+            continue
+        name,values = headers[-1]
+        values.append(l.lstrip('\t'))
+        headers[-1] = (name,values)
+        continue
+
+    name,value = l.split(':',1)
+    value = value.lstrip(' ').rstrip('\r')
+
+    # Skip headers that have to do with transfer encodings and connection longevity
+    if name.lower() not in ['accept','accept-language',
+                            'accept-encoding','accept-charset',
+                            'connection', 'keep-alive', 'host', 
+                            'content-length']:
+        headers.append((name,[value]))
+
+    if name.lower() == 'host':
+        if ':' in value:
+            host,port = value.split(':',1)
+            if port == 443:
+                use_ssl = True
+        else:
+            host = value
+
+print('''
+# TODO: ensure the host, port, and SSL settings are correct.
+host = %s
+port = %s
+use_ssl = %s
+''' % (repr(host),repr(port),repr(use_ssl)))
+
+print('''
+def sendRequest(connection):
+    method = %s
+    path = %s
+    body = %s
+
+    connection.putrequest(method, path)
+    ''' % (repr(method), repr(path), repr(body)))
+
+for name,values in headers:
+    if len(values) > 1:
+        continuations = ','.join([repr(v) for v in values[1:]])
+        print('''    connection.putheader(%s, %s, %s)''' % (repr(name),repr(values[0]),continuations))
+    else:
+        print('''    connection.putheader(%s, %s)''' % (repr(name),repr(values[0])))
+
+print('''    
+    if len(body) > 0:
+        connection.putheader('Content-Length', len(body))
+    connection.endheaders()
+    connection.send(body)
+    
+    return connection.getresponse()
+
+
+connection = None
+if use_ssl:
+    connection = httpc.HTTPSConnection(host, port)
+else:
+    connection = httpc.HTTPConnection(host, port)
+
+# TODO: customize code here to retrieve what you need from the response(s)
+# For information on the response object's interface, see:
+#   http://docs.python.org/library/httplib.html#httpresponse-objects
+
+connection.connect()
+response = sendRequest(connection)
+print(response.getheaders())
+print(repr(response.read()))
+connection.close()
+''')
