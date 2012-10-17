@@ -37,7 +37,7 @@ class CBCREncryptionOracle:
 
     def encrypt_block(self,input_block, prev_block = None):
         if (len(input_block) != self.blockSize):
-            print "Received input block of len ",len(input_block)
+            print("Received input block of len ",len(input_block))
             raise InvalidBlockError(self.blockSize,len(input_block))
         
         if (prev_block == None):

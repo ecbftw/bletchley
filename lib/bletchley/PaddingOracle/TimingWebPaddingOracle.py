@@ -37,7 +37,7 @@ class TimingWebPaddingOracle:
         self.requests = requests
         
         if(encoder== None and decoder!=None) or (encoder!=None and decoder==None):
-            print "ERROR: Encoder and decoder must be both set or not set at all. Disabling both."
+            print("ERROR: Encoder and decoder must be both set or not set at all. Disabling both.")
             self.encoder = None
             self.decoder = None
         else:
@@ -81,7 +81,7 @@ class TimingWebPaddingOracle:
         
     def test_oracle(self):
         if(self.oracle_name == None or self.oracle_value == None):
-            print "ERROR: Cannot test_oracle if no oracle variable defined"
+            print("ERROR: Cannot test_oracle if no oracle variable defined")
             return
         
         #Perform 'normal' analysis first
@@ -115,21 +115,21 @@ class TimingWebPaddingOracle:
             
             #FIXME most likely this will find a difference
             if(time1 != time2):
-                print "Found difference for i="+hex(b)
-                print "Original timing: " + str(time1)
-                print "Bad timing: " + str(time2)
+                print("Found difference for i="+hex(b))
+                print("Original timing: " + str(time1))
+                print("Bad timing: " + str(time2))
                 self.time_threshold = abs(time1 - time2) / 2 + min(time1,time2)
                 if(time1 > time2):
                     self.oracle_type = 0x01 #Normal timing is higher than threshold
                 else:
                     self.oracle_type = 0x02 #Normal timing is lower than threshold
                 return True
-        print "ERROR: Could not find a difference."
+        print("ERROR: Could not find a difference.")
         return False
     
     def oracle(self,ctext):
         if(self.time_threshold == None):
-            print "ERROR: Oracle not defined!"
+            print("ERROR: Oracle not defined!")
         else:
             
             newdict = self.data.copy()

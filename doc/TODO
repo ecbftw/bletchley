@@ -1,0 +1,7 @@
+* PaddingOracle
+  - configurable number of threads sending requests in parallel
+  - better integration of PKCS5 padding in reencryption?
+  - need to reorganize the modules/class locations at all to make it
+    less cumbersome to import?
+  - change print statements to configurable debug statements
+
