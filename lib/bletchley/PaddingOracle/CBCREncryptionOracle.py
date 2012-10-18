@@ -17,9 +17,9 @@ Copyright (C) 2010 ELOI SANFÈLIX
  along with this program.  If not, see <http://www.gnu.org/licenses/>.
 '''
 
-from PaddingOracle.InvalidBlockError import InvalidBlockError
 import random
 import struct
+from .Exceptions import *
 
 class CBCREncryptionOracle:
     '''
