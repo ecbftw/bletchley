@@ -111,9 +111,9 @@ def iterBuffer(buf, block_size):
 	'''
 	return (buf[i:i + block_size] for i in xrange(0, len(buf), block_size))
 
-def pkcs5PadBuffer(buf, block_size):
+def pkcs7PadBuffer(buf, block_size):
 	'''
-	Pads the end of a buffer using PKCS#5 padding.
+	Pads the end of a buffer using PKCS#5/PKCS#7 padding.
 	'''
 	padding = block_size - (len(buf) % block_size)
 	return buf + (chr(padding) * padding)
