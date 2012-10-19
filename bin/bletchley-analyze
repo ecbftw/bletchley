@@ -65,31 +65,30 @@ def terminalHighlightedString(code, s):
 
 
 def printColoredHexDump(blobs, group_size=8):    
-    chunk_size = 64
+    line_size = 64
     group_size *= 2 # two hex digits per byte
-
+    print(group_size)
     hex_blobs = map(binascii.b2a_hex, blobs)
     color_map = buffertools.blockWiseColorMap(group_size, hex_blobs)
 
     for k in range(0,len(hex_blobs)):
         hex = hex_blobs[k]
-        line = ''
         
-        for i in range(0,len(hex),chunk_size):
-            line += '%.8X: ' % i
+        for i in range(0,len(hex),line_size):
+            line = '%.8X: ' % i
 
-            if len(hex) < chunk_size:
-                hex += (chunk_size-len(hex))*' '
+            if len(hex[i:]) < line_size:
+                hex += (line_size-len(hex[i:]))*' '
 
-            for j in range(0,len(hex),group_size):
-                group = hex[j:j+group_size]
-                line += terminalHighlightedString(color_map.get(group, None), group) + ' '
-        
+            for j in range(0,line_size,group_size):
+                group = hex[i+j:i+j+group_size]
+                line += terminalHighlightedString(color_map.get(group, None), group) + ' ' 
+       
             line += '| '
-            line += repr(blobs[k][i/2:(i+chunk_size)/2])
-            line += '\n'
+            line += repr(blobs[k][i/2:(i+line_size)/2])
         
-        print(line)
+            print(line)
+        print('')
 
 
 
