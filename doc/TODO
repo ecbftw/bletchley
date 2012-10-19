@@ -12,3 +12,6 @@
 * nextrand
   - Expand capabilities to handle nextInt calls with arguments
   - Transition code to a library that could be called by Python
+
+* analyze
+  - add options to override decoding chain and block size
