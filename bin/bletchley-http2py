@@ -78,7 +78,7 @@ header_lines = raw_headers.split('\n')
 method,path,version = header_lines[0].split(' ', 2)
 
 host = 'TODO'
-port = 0
+port = 80
 use_ssl = False
 
 headers = []
@@ -119,14 +119,16 @@ port = %s
 use_ssl = %s
 ''' % (repr(host),repr(port),repr(use_ssl)))
 
+chunked_body = '\n            '.join([repr(body[i:i+40]) for i in range(0,len(body),40)])
+
 print('''
 def sendRequest(connection):
     method = %s
     path = %s
-    body = %s
-
+    body = (%s)
+    
     connection.putrequest(method, path)
-    ''' % (repr(method), repr(path), repr(body)))
+    ''' % (repr(method), repr(path), chunked_body))
 
 for name,values in headers:
     if len(values) > 1:
