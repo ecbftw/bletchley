@@ -2,7 +2,9 @@
 Created on Jul 4, 2010
 
 Copyright (C) 2010 ELOI SANFÈLIX
+Copyright (C) 2012 Timothy D. Morgan
 @author: Eloi Sanfelix < eloi AT limited-entropy.com >
+@author: Timothy D. Morgan < tmorgan {a} vsecurity . com >
 
  This program is free software: you can redistribute it and/or modify
  it under the terms of the GNU Lesser General Public License, version 3,
@@ -31,45 +33,52 @@ class DecryptionOracle:
     '''
 
     _thread_result = None
+    _oracle = None
+    _ciphertext = None
+    _iv = None
+    _decrypted = None
     max_threads = None
     log_fh = None
-
-    def __init__(self, oracle, block_size=8, max_threads=1, log_file=None):
+    
+    def __init__(self, oracle, block_size, ciphertext, iv=None, max_threads=1, log_file=None):
         '''
         Creates a new DecryptionOracle object. Receives an oracle function which returns True 
         if the given ciphertext results in a correct padding and False otherwise. A second 
         parameter defining the cipher block size in bytes is also supported (default is 8). 
         '''
-        self.oracle = oracle
-        self.block_size = block_size
+        if(len(ciphertext)%block_size != 0 or len(ciphertext) < block_size):
+            raise InvalidBlockError(block_size,len(ciphertext))
+        if(iv != None and len(iv)%block_size != 0):
+            raise InvalidBlockError(block_size,len(iv))
+
+        self._oracle = oracle
+        self._block_size = block_size
+        self._ciphertext = ciphertext
+        self._iv = iv
+        self._decrypted = ''
         self.max_threads = max_threads
         self.log_fh = log_file
 
 
-    def log_message(self, message):
+    def log_message(self, s):
         if self.log_fh != None:
-            self.log_fh.write(message+'\n')
+            self.log_fh.write(s+'\n')
 
 
-    def probe_padding(self, blob, iv=None):
-        final = blob[0-self.block_size:]
-        prior = blob[0-2*self.block_size:0-self.block_size]
-        if len(blob) <= self.block_size:
-            # If only one block present, then try to use an IV
-            if iv!=None:
-                self.log_message("Only one block present, using IV as scratch pad")
-                prior = iv
-            else:
-                self.log_message("Only one block present, using 0 block as scratch pad")
-                prior = '\x00'*self.block_size
-
+    def probe_padding(self, prior, final):
+        '''
+        Attempts to verify that a CBC padding oracle exists and then determines the
+        pad value.  Returns the pad string, or None on failure. 
+        XXX: Currently only works for PKCS 5/7.
+        '''
+        ret_val = None
         # First probe for beginning of pad
-        for i in range(0-self.block_size,0):
+        for i in range(0-self._block_size,0):
             if i == -1:
                 break
             tweaked = struct.unpack("B", prior[i])[0] ^ 0xFF
             tweaked = struct.pack("B", tweaked)
-            if not self.oracle(blob+prior[:i]+tweaked+prior[i+1:]+final):
+            if not self._oracle(self._ciphertext+prior[:i]+tweaked+prior[i+1:]+final):
                 break
 
         pad_length = 0-i
@@ -79,10 +88,9 @@ class DecryptionOracle:
             # and making sure the padding succeeds
             tweaked = struct.unpack("B", prior[-1])[0] ^ (pad_length^1)
             tweaked = struct.pack("B", tweaked)
-            if self.oracle(blob+prior[:-1]+tweaked+final):
-                return pad_length
-            else:
-                return None
+            if self._oracle(self._ciphertext+prior[:-1]+tweaked+final):
+                ret_val = buffertools.pkcs7Pad(pad_length)
+
         else:
             # Verify by changing pad byte to 2 and brute-force changing
             # second-to-last byte to 2 as well
@@ -91,87 +99,56 @@ class DecryptionOracle:
             for j in range(1,256):
                 guess = struct.unpack("B", prior[-2])[0] ^ j
                 guess = struct.pack("B", guess)
-                if self.oracle(blob+prior[:-2]+guess+tweaked+final):
-                    print("verified padding through decryption")
-                    return pad_length
+                if self._oracle(self._ciphertext+prior[:-2]+guess+tweaked+final):
+                    # XXX: Save the decrypted byte for later
+                    ret_val = buffertools.pkcs7Pad(pad_length)
 
-            return None
+        if ret_val:
+            self._decrypted = ret_val
 
-
-    def decrypt_last_bytes(self,block):
-        '''
-        Decrypts the last bytes of block using the oracle.
-        '''
-        if(len(block)!=self.block_size):
-            raise InvalidBlockError(self.block_size,len(block))
-        
-        #First we get some random bytes
-        #rand = [random.getrandbits(8) for i in range(self.block_size)]
-        rand = [0 for i in range(self.block_size)]
-        
-        for b in range(256):
-            
-            #XOR with current guess
-            rand[-1] ^= b
-            #Generate padding string    
-            randStr = "".join([ struct.pack("B",i) for i in rand ] )
-            if(self.oracle(randStr+block)):
-                break
-            else:
-                #Remove current guess
-                rand[-1] ^= b
-                
-        #Now we have a correct padding, test how many bytes we got!
-        for i in range(self.block_size-1):
-            #Modify currently tested byte
-            rand[i] = rand[i]^0x01
-            randStr = "".join([ struct.pack("B",j) for j in rand ] )
-            if(not self.oracle(randStr+block)):
-                #We got a hit! Byte i is also part of the padding
-                paddingLen = self.block_size-i
-                #Correct random i
-                rand[i] = rand[i]^0x01
-                #Return paddingLen final bytes
-                return "".join([ struct.pack("B",i^paddingLen) for i in rand[-paddingLen:]])
-            
-            #Nothing to do when there is no hit. This byte is useless then.
-
-        #Could only recover 1 byte. Return it.    
-        return "".join(struct.pack("B",rand[-1]^0x01))
+        return ret_val
 
 
-    def _test_value_set(self, prefix, base, suffix, value_set):
+    # XXX: This could be generalized as a byte probe utility for a variety of attacks
+    def _test_value_set(self, prefix, suffix, value_set):
         for b in value_set:
-            if(self.oracle(prefix+struct.pack("B",base^b)+suffix)):
-                self._thread_result = base^b
+            if self._thread_result != None:
+                # Stop if another thread found the result
+                break
+            if self._oracle(str(prefix+struct.pack("B",b)+suffix)):
+                self._thread_result = b
                 break
 
 
-    def decrypt_next_byte(self,block,known_bytes):
+    def decrypt_next_byte(self, prior, block, known_bytes):
         '''
-        Given some known final bytes, decrypts the next byte using the padding oracle. 
+        Given some known final bytes, decrypts the next byte using the padding oracle.
+        prior - 
+        block - 
+        known_bytes - 
         '''
-        if(len(block)!=self.block_size):
+        if(len(block)!=self._block_size):
             raise InvalidBlockError
         numKnownBytes = len(known_bytes)
         
-        if(numKnownBytes >= self.block_size):
+        if(numKnownBytes >= self._block_size):
             return known_bytes
         
-        #rand = [random.getrandbits(8) for i in range(self.block_size-numKnownBytes)]
-        rand = [0 for i in range(self.block_size-numKnownBytes)]
-        prefix = struct.pack("B"*len(rand[0:-1]),*rand[0:-1])
-        suffix = list(struct.unpack("B"*numKnownBytes, known_bytes))
+        prior_prefix = prior[0:self._block_size-numKnownBytes-1]
+        base = ord(prior[self._block_size-numKnownBytes-1])
+        # Adjust known bytes to appear as a PKCS 7 pad
+        suffix = [0]*numKnownBytes
         for i in range(0,numKnownBytes):
-            suffix[i] ^= numKnownBytes+1
+            suffix[i] ^= ord(prior[0-numKnownBytes+i])^ord(known_bytes[i])^(numKnownBytes+1)
         suffix = struct.pack("B"*len(suffix),*suffix)+block
 
-        # Now we do same trick again to find next byte.
+        # Each thread spawned searches a subset of the next byte's 
+        # 256 possible values
         self._thread_result = None
         threads = []
         for i in range(0,self.max_threads):
             t = threading.Thread(target=self._test_value_set, 
-                                 args=(prefix, rand[-1], suffix, range(i,255,self.max_threads)))
+                                 args=(self._ciphertext+prior_prefix, suffix, range(i,256,self.max_threads)))
             t.start()
             threads.append(t)
             
@@ -181,46 +158,89 @@ class DecryptionOracle:
         if self._thread_result == None:
             raise Exception
 
+        decrypted = struct.pack("B",self._thread_result^base^(numKnownBytes+1))
+        self._decrypted = decrypted + self._decrypted
         #  Return previous bytes together with current byte
-        return struct.pack("B",self._thread_result^(numKnownBytes+1))+known_bytes        
-        #return "".join([struct.pack("B",rand[i]^(numKnownBytes+1)) for i in range(self.block_size-numKnownBytes-1,self.block_size)])
+        return decrypted+known_bytes 
     
 
-    def decrypt_block(self,block):
+    def decrypt_block(self, prior, block, last_bytes=''):
         '''
         Decrypts the block of ciphertext provided as a parameter.
         '''
-        bytes = self.decrypt_last_bytes(block)
-        while(len(bytes)!=self.block_size):
-            bytes = self.decrypt_next_byte(block,bytes)
-        return bytes
+        while(len(last_bytes)!=self._block_size):
+            last_bytes = self.decrypt_next_byte(prior, block, last_bytes)
+        return last_bytes
 
-    
-    def decrypt_message(self,ctext, iv = None):
+
+    # XXX: Enable recovery in case of intermittent failure by storing state of
+    #      partial decryption on object 
+    # XXX: Add option to strip padding from message
+    def decrypt(self):
         '''
         Decrypts a message using CBC mode. If the IV is not provided, it assumes a null IV.
         '''
-        #Recover first block
-        result = self.decrypt_block(ctext[0:self.block_size])
+        blocks = buffertools.splitBuffer(self._ciphertext, self._block_size)
+
+        final = blocks[-1]
+        iv = self._iv
+        if iv == None:
+            iv = '\x00'*self._block_size
+        if len(blocks) == 1:
+            # If only one block present, then try to use IV as prior
+            prior = iv
+        else:
+            prior = blocks[-2]
+
+        # Decrypt last block, starting with padding (quicker to decrypt)
+        pad_bytes = self.probe_padding(prior, final)
+        decrypted = self.decrypt_block(prior, final, pad_bytes)
+        print(repr(decrypted))
+
+        # Now decrypt all other blocks except first block
+        for i in range(len(blocks)-2, 0, -1):
+            decrypted = self.decrypt_block(blocks[i-1], blocks[i]) + decrypted
+
+        # Finally decrypt first block
+        decrypted = self.decrypt_block(iv, blocks[0]) + decrypted
         
-        #XOR IV if provided, else we assume zero IV.
-        if( iv != None):
-            result = self.xor_strings(result, iv)
+        return decrypted
 
-        #Recover block by block, XORing with previous ctext block
-        for i in range(self.block_size,len(ctext),self.block_size):
-            prev = ctext[i-self.block_size:i]
-            current = self.decrypt_block(ctext[i:i+self.block_size])
-            result += self.xor_strings(prev,current)
-        return result
 
+    def encrypt_block(self, plaintext, ciphertext):
+        if len(plaintext) != self._block_size or len(plaintext) != len(ciphertext):
+            raise InvalidBlockError(self._block_size,len(plaintext))
+
+        ptext = self.decrypt_block('\x00'*self._block_size, ciphertext)
+        prior = buffertools.xorBuffers(ptext, plaintext)
+        return prior,ciphertext
     
-    def xor_strings(self,s1,s2):
-        result = ""
-        for i in range(len(s1)):
-            result += struct.pack("B",ord(s1[i])^ord(s2[i]))
-        return result
-
     
-    def hex_string(self,data):
-        return "".join([ hex(ord(i))+" " for i in data])
+    # XXX: Add option to encrypt only the last N blocks.  Supplying a shorter
+    #      plaintext and subsequent concatenation can easily achieve this as well...
+    def encrypt(self,plaintext):
+        blocks = buffertools.splitBuffer(buffertools.pkcs7PadBuffer(plaintext, self._block_size), 
+                                         self._block_size)
+
+        if (len(self._decrypted) >= self._block_size
+            and len(self._ciphertext) >= 2*self._block_size):
+            # If possible, reuse work from prior decryption efforts on original
+            # message for last block
+            old_prior = self._ciphertext[0-self._block_size*2:0-self._block_size]
+            final_plaintext = self._decrypted[0-self._block_size:]
+            prior = buffertools.xorBuffers(old_prior,
+                                           buffertools.xorBuffers(final_plaintext, blocks[-1]))
+            ciphertext = self._ciphertext[0-self._block_size:]
+        else:
+            # Otherwise, select a random last block and generate the prior block
+            ciphertext = struct.pack("B"*self._block_size, 
+                                     *[random.getrandbits(8) for i in range(self._block_size)])
+            prior,ciphertext = self.encrypt_block(blocks[-1], ciphertext)
+
+        # Continue generating all prior blocks
+        for i in range(len(blocks)-2, -1, -1):
+            prior,cblock = self.encrypt_block(blocks[i],prior)
+            ciphertext = cblock+ciphertext
+        
+        # prior as IV
+        return str(prior),str(ciphertext)

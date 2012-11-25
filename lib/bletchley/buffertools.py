@@ -116,4 +116,7 @@ def pkcs7PadBuffer(buf, block_size):
 	Pads the end of a buffer using PKCS#5/PKCS#7 padding.
 	'''
 	padding = block_size - (len(buf) % block_size)
-	return buf + (chr(padding) * padding)
+	return buf + pkcs7Pad(padding)
+
+def pkcs7Pad(length):
+	return chr(length) * length

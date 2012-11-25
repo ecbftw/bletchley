@@ -15,3 +15,11 @@
 
 * analyze
   - add options to override decoding chain and block size
+
+
+* Consider using an SMT solver for certain problems (linear PRNGs?)
+  http://en.wikipedia.org/wiki/Satisfiability_Modulo_Theories
+
+
+* Add tools for testing and conducting hash length-extension attacks.
+  One tool: https://github.com/bwall/HashPump
