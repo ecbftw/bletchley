@@ -25,38 +25,85 @@ import threading
 from .. import buffertools
 from .Exceptions import *
 
-class DecryptionOracle:
-    '''
-    This class implements a decryption oracle based on a given padding oracle.
-    The attacked padding scheme is the one defined in PKCS#5 and RFC2040, and maybe other places.
-    The attack was first described in the "Security Flaws Induced by CBC Padding. Applications to SSL, IPSEC, WTLS... by Serge Vaudenay"
-    '''
+class POA:
+    """This class implements padding oracle attacks given a ciphertext and
+    function that acts as a padding oracle.
 
+    The padding scheme is assumed to be PKCS#5/#7, also defined in RFC2040.
+    This attack was first described in:
+     "Security Flaws Induced by CBC Padding. Applications to SSL, IPSEC,
+      WTLS" by Serge Vaudenay (2002)
+
+    POA objects are not thread-safe.  If multiple threads need to work
+    simultaneously on the same ciphertext and oracle, create a
+    separate instance.
+
+    """
+
+    ## private
     _thread_result = None
     _oracle = None
     _ciphertext = None
     _iv = None
-    _decrypted = None
-    max_threads = None
+
+    ## protected (reading ok, changing not ok)
+    block_size = None
+
+    ## public (r/w ok)
+    decrypted = None
+    threads = None
     log_fh = None
     
-    def __init__(self, oracle, block_size, ciphertext, iv=None, max_threads=1, log_file=None):
-        '''
-        Creates a new DecryptionOracle object. Receives an oracle function which returns True 
-        if the given ciphertext results in a correct padding and False otherwise. A second 
-        parameter defining the cipher block size in bytes is also supported (default is 8). 
-        '''
+    def __init__(self, oracle, block_size, ciphertext, iv=None,
+                 threads=1, decrypted='', log_file=None):
+        """Creates a new padding oracle attack (POA) object. 
+
+        Arguments:
+        oracle -- A function which returns True if the given ciphertext
+         results in a correct padding upon decryption and False
+         otherwise.  This function should implement the prototype:
+           def myOracle(ciphertext, iv)
+         If the initialization vector (iv) is unknown is not included in
+         the ciphertext message, it can be ignored in the oracle
+         implementation (though some limitations will result from this).
+
+        block_size -- The block size of the ciphertext being attacked.
+         Is almost always 8 or 16.
+
+        ciphertext -- The ciphertext to be decrypted
+
+        iv -- The initialization vector associated with the ciphertext.
+         If none provided, it is assumed to be a block of 0's
+
+        threads -- The maximum number of parallel threads to use during
+         decryption.  If more than one thread is used, then the oracle
+         function will be called in parallel.  It should implement any
+         internal locking necessary to prevent race conditions where
+         applicable.
+
+        decrypted -- If a portion of the plaintext is already known (due
+         to a prior, partially successful decryption attempt), then this
+         may be used to restart the decryption process where it was
+         previously left off.  This argument is assumed to contain the
+         final N bytes (for an N-byte argument) of the plaintext; that
+         is, the tail of the plaintext.
+
+        log_file -- A Python file object where log messages will be
+         written.
+
+        """
+
         if(len(ciphertext)%block_size != 0 or len(ciphertext) < block_size):
             raise InvalidBlockError(block_size,len(ciphertext))
         if(iv != None and len(iv)%block_size != 0):
             raise InvalidBlockError(block_size,len(iv))
 
         self._oracle = oracle
-        self._block_size = block_size
         self._ciphertext = ciphertext
         self._iv = iv
-        self._decrypted = ''
-        self.max_threads = max_threads
+        self.block_size = block_size
+        self.decrypted = decrypted
+        self.threads = threads
         self.log_fh = log_file
 
 
@@ -66,14 +113,16 @@ class DecryptionOracle:
 
 
     def probe_padding(self, prior, final):
-        '''
-        Attempts to verify that a CBC padding oracle exists and then determines the
-        pad value.  Returns the pad string, or None on failure. 
+        """Attempts to verify that a CBC padding oracle exists and then determines the
+        pad value.  
+
+        Returns the pad string, or None on failure. 
         XXX: Currently only works for PKCS 5/7.
-        '''
+        """
+
         ret_val = None
         # First probe for beginning of pad
-        for i in range(0-self._block_size,0):
+        for i in range(0-self.block_size,0):
             if i == -1:
                 break
             tweaked = struct.unpack("B", prior[i])[0] ^ 0xFF
@@ -104,7 +153,7 @@ class DecryptionOracle:
                     ret_val = buffertools.pkcs7Pad(pad_length)
 
         if ret_val:
-            self._decrypted = ret_val
+            self.decrypted = ret_val
 
         return ret_val
 
@@ -121,21 +170,25 @@ class DecryptionOracle:
 
 
     def decrypt_next_byte(self, prior, block, known_bytes):
-        '''
-        Given some known final bytes, decrypts the next byte using the padding oracle.
-        prior - 
-        block - 
-        known_bytes - 
-        '''
-        if(len(block)!=self._block_size):
+        """Decrypts one byte of ciphertext by modifying the prior
+        ciphertext block at the same relative offset.
+
+        Arguments:
+        prior -- Ciphertext block appearing prior to the current target 
+        block -- Currently targeted ciphertext block
+        known_bytes -- Bytes in this block already decrypted
+
+        """
+
+        if(len(block)!=self.block_size):
             raise InvalidBlockError
         numKnownBytes = len(known_bytes)
         
-        if(numKnownBytes >= self._block_size):
+        if(numKnownBytes >= self.block_size):
             return known_bytes
         
-        prior_prefix = prior[0:self._block_size-numKnownBytes-1]
-        base = ord(prior[self._block_size-numKnownBytes-1])
+        prior_prefix = prior[0:self.block_size-numKnownBytes-1]
+        base = ord(prior[self.block_size-numKnownBytes-1])
         # Adjust known bytes to appear as a PKCS 7 pad
         suffix = [0]*numKnownBytes
         for i in range(0,numKnownBytes):
@@ -146,9 +199,9 @@ class DecryptionOracle:
         # 256 possible values
         self._thread_result = None
         threads = []
-        for i in range(0,self.max_threads):
+        for i in range(0,self.threads):
             t = threading.Thread(target=self._test_value_set, 
-                                 args=(self._ciphertext+prior_prefix, suffix, range(i,256,self.max_threads)))
+                                 args=(self._ciphertext+prior_prefix, suffix, range(i,256,self.threads)))
             t.start()
             threads.append(t)
             
@@ -159,33 +212,34 @@ class DecryptionOracle:
             raise Exception
 
         decrypted = struct.pack("B",self._thread_result^base^(numKnownBytes+1))
-        self._decrypted = decrypted + self._decrypted
+        self.decrypted = decrypted + self.decrypted
         #  Return previous bytes together with current byte
         return decrypted+known_bytes 
     
 
     def decrypt_block(self, prior, block, last_bytes=''):
-        '''
-        Decrypts the block of ciphertext provided as a parameter.
-        '''
-        while(len(last_bytes)!=self._block_size):
+        """Decrypts the block of ciphertext provided as a parameter.
+
+        """
+
+        while(len(last_bytes)!=self.block_size):
             last_bytes = self.decrypt_next_byte(prior, block, last_bytes)
         return last_bytes
 
 
-    # XXX: Enable recovery in case of intermittent failure by storing state of
-    #      partial decryption on object 
-    # XXX: Add option to strip padding from message
+    # XXX: Add logic to begin where decryption previously left off
     def decrypt(self):
-        '''
-        Decrypts a message using CBC mode. If the IV is not provided, it assumes a null IV.
-        '''
-        blocks = buffertools.splitBuffer(self._ciphertext, self._block_size)
+        """Decrypts a message using CBC mode. If the IV is not provided,
+        it assumes a null IV.
+
+        """
+
+        blocks = buffertools.splitBuffer(self._ciphertext, self.block_size)
 
         final = blocks[-1]
         iv = self._iv
         if iv == None:
-            iv = '\x00'*self._block_size
+            iv = '\x00'*self.block_size
         if len(blocks) == 1:
             # If only one block present, then try to use IV as prior
             prior = iv
@@ -195,7 +249,6 @@ class DecryptionOracle:
         # Decrypt last block, starting with padding (quicker to decrypt)
         pad_bytes = self.probe_padding(prior, final)
         decrypted = self.decrypt_block(prior, final, pad_bytes)
-        print(repr(decrypted))
 
         # Now decrypt all other blocks except first block
         for i in range(len(blocks)-2, 0, -1):
@@ -204,14 +257,14 @@ class DecryptionOracle:
         # Finally decrypt first block
         decrypted = self.decrypt_block(iv, blocks[0]) + decrypted
         
-        return decrypted
+        return buffertools.stripPKCS7Pad(decrypted)
 
 
     def encrypt_block(self, plaintext, ciphertext):
-        if len(plaintext) != self._block_size or len(plaintext) != len(ciphertext):
-            raise InvalidBlockError(self._block_size,len(plaintext))
+        if len(plaintext) != self.block_size or len(plaintext) != len(ciphertext):
+            raise InvalidBlockError(self.block_size,len(plaintext))
 
-        ptext = self.decrypt_block('\x00'*self._block_size, ciphertext)
+        ptext = self.decrypt_block('\x00'*self.block_size, ciphertext)
         prior = buffertools.xorBuffers(ptext, plaintext)
         return prior,ciphertext
     
@@ -219,22 +272,22 @@ class DecryptionOracle:
     # XXX: Add option to encrypt only the last N blocks.  Supplying a shorter
     #      plaintext and subsequent concatenation can easily achieve this as well...
     def encrypt(self,plaintext):
-        blocks = buffertools.splitBuffer(buffertools.pkcs7PadBuffer(plaintext, self._block_size), 
-                                         self._block_size)
+        blocks = buffertools.splitBuffer(buffertools.pkcs7PadBuffer(plaintext, self.block_size), 
+                                         self.block_size)
 
-        if (len(self._decrypted) >= self._block_size
-            and len(self._ciphertext) >= 2*self._block_size):
+        if (len(self.decrypted) >= self.block_size
+            and len(self._ciphertext) >= 2*self.block_size):
             # If possible, reuse work from prior decryption efforts on original
             # message for last block
-            old_prior = self._ciphertext[0-self._block_size*2:0-self._block_size]
-            final_plaintext = self._decrypted[0-self._block_size:]
+            old_prior = self._ciphertext[0-self.block_size*2:0-self.block_size]
+            final_plaintext = self.decrypted[0-self.block_size:]
             prior = buffertools.xorBuffers(old_prior,
                                            buffertools.xorBuffers(final_plaintext, blocks[-1]))
-            ciphertext = self._ciphertext[0-self._block_size:]
+            ciphertext = self._ciphertext[0-self.block_size:]
         else:
             # Otherwise, select a random last block and generate the prior block
-            ciphertext = struct.pack("B"*self._block_size, 
-                                     *[random.getrandbits(8) for i in range(self._block_size)])
+            ciphertext = struct.pack("B"*self.block_size, 
+                                     *[random.getrandbits(8) for i in range(self.block_size)])
             prior,ciphertext = self.encrypt_block(blocks[-1], ciphertext)
 
         # Continue generating all prior blocks

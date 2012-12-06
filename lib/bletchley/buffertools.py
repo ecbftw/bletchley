@@ -120,3 +120,20 @@ def pkcs7PadBuffer(buf, block_size):
 
 def pkcs7Pad(length):
 	return chr(length) * length
+
+def stripPKCS7Pad(decrypted, block_size=16):
+    '''
+    Validates a plaintext containing a PKCS5/7 pad, then returns the plaintext 
+    without the pad.
+    '''
+    if len(decrypted) % block_size != 0:
+        return None
+
+    length = ord(decrypted[-1])
+    if length > block_size:
+        return None
+
+    if decrypted[0-length:] != pkcs7Pad(length):
+        return None
+
+    return decrypted[0:0-length]

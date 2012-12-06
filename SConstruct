@@ -64,13 +64,13 @@ env.Install(destdir+bindir, [bletchley_nextrand, 'bin/bletchley-analyze', 'bin/b
 
 if sys.version_info[0] == 2:
    install_items.append('bletchley-python2.log')
-   env.Command('bletchley-python2.log', Glob('lib/bletchley/*.py')+Glob('lib/bletchley/PaddingOracle/*.py'),
+   env.Command('bletchley-python2.log', Glob('lib/bletchley/*.py')+Glob('lib/bletchley/CBC/*.py'),
                "python bletchley-distutils install --root=/%s | tee bletchley-python2.log" % destdir)
 
 python_path = os.popen('which python3').read()
 if python_path != '':
    install_items.append('bletchley-python3.log')
-   env.Command('bletchley-python3.log', Glob('lib/bletchley/*.py')+Glob('lib/bletchley/PaddingOracle/*.py'),
+   env.Command('bletchley-python3.log', Glob('lib/bletchley/*.py')+Glob('lib/bletchley/CBC/*.py'),
                "python3 bletchley-distutils install --root=/%s | tee bletchley-python3.log" % destdir)
 
 # API documentation
