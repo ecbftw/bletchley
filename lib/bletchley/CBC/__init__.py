@@ -34,9 +34,10 @@ class POA:
      "Security Flaws Induced by CBC Padding. Applications to SSL, IPSEC,
       WTLS" by Serge Vaudenay (2002)
 
-    POA objects are not thread-safe.  If multiple threads need to work
+    POA objects are not caller thread-safe.  If multiple threads need to work
     simultaneously on the same ciphertext and oracle, create a
-    separate instance.
+    separate instance. POA objects can execute tasks internally using
+    multiple threads, however.
 
     """
 
@@ -62,7 +63,7 @@ class POA:
         oracle -- A function which returns True if the given ciphertext
          results in a correct padding upon decryption and False
          otherwise.  This function should implement the prototype:
-           def myOracle(ciphertext, iv)
+           def myOracle(ciphertext, iv): ...
          If the initialization vector (iv) is unknown is not included in
          the ciphertext message, it can be ignored in the oracle
          implementation (though some limitations will result from this).
@@ -209,6 +210,7 @@ class POA:
             t.join()
         
         if self._thread_result == None:
+            self.log_message("Value of a byte could not be determined.  Current plaintext suffix: "+ repr(self.decrypted))
             raise Exception
 
         decrypted = struct.pack("B",self._thread_result^base^(numKnownBytes+1))
@@ -229,38 +231,64 @@ class POA:
 
     # XXX: Add logic to begin where decryption previously left off
     def decrypt(self):
-        """Decrypts a message using CBC mode. If the IV is not provided,
-        it assumes a null IV.
+        """Decrypts the previously supplied ciphertext. If the IV was
+        not provided, it assumes a IV of zero bytes.
 
         """
 
         blocks = buffertools.splitBuffer(self._ciphertext, self.block_size)
 
-        final = blocks[-1]
-        iv = self._iv
-        if iv == None:
-            iv = '\x00'*self.block_size
-        if len(blocks) == 1:
-            # If only one block present, then try to use IV as prior
-            prior = iv
-        else:
-            prior = blocks[-2]
+        if len(self.decrypted) == 0:
+            
+            final = blocks[-1]
+            iv = self._iv
+            if iv == None:
+                iv = '\x00'*self.block_size
+            if len(blocks) == 1:
+                # If only one block present, then try to use IV as prior
+                prior = iv
+            else:
+                prior = blocks[-2]
 
-        # Decrypt last block, starting with padding (quicker to decrypt)
-        pad_bytes = self.probe_padding(prior, final)
-        decrypted = self.decrypt_block(prior, final, pad_bytes)
+            # Decrypt last block, starting with padding (quicker to decrypt)
+            pad_bytes = self.probe_padding(prior, final)
+            decrypted = self.decrypt_block(prior, final, pad_bytes)
 
-        # Now decrypt all other blocks except first block
-        for i in range(len(blocks)-2, 0, -1):
-            decrypted = self.decrypt_block(blocks[i-1], blocks[i]) + decrypted
+            # Now decrypt all other blocks except first block
+            for i in range(len(blocks)-2, 0, -1):
+                decrypted = self.decrypt_block(blocks[i-1], blocks[i]) + decrypted
 
-        # Finally decrypt first block
-        decrypted = self.decrypt_block(iv, blocks[0]) + decrypted
+            # Finally decrypt first block
+            decrypted = self.decrypt_block(iv, blocks[0]) + decrypted
         
+        # Start where we left off last
+        # XXX: test this
+        else: 
+            num_partial = len(self.decrypted) % self.block_size
+            finished_blocks = len(self.decrypted) / self.block_size
+            partial = self.decrypted[0:num_partial]
+            decrypted = self.decrypted[num_partial:]
+
+            for i in range(-1-finished_blocks, 0, -1):
+                decrypted = self.decrypt_block(blocks[i-1], blocks[i], partial)
+                partial = ''
+
+            # Finally decrypt first block
+            decrypted = self.decrypt_block(iv, blocks[0]) + decrypted
+            
         return buffertools.stripPKCS7Pad(decrypted)
 
 
     def encrypt_block(self, plaintext, ciphertext):
+        """Encrypts a block of plaintext.  This is accomplished by
+        decrypting the supplied ciphertext and then computing the prior
+        block needed to create the desired plaintext at the ciphertext's
+        location. 
+
+        Returns the calculated prior block and the provided ciphertext
+        block as a tuple.
+
+        """
         if len(plaintext) != self.block_size or len(plaintext) != len(ciphertext):
             raise InvalidBlockError(self.block_size,len(plaintext))
 
@@ -269,9 +297,20 @@ class POA:
         return prior,ciphertext
     
     
-    # XXX: Add option to encrypt only the last N blocks.  Supplying a shorter
-    #      plaintext and subsequent concatenation can easily achieve this as well...
     def encrypt(self,plaintext):
+        """Encrypts a plaintext value through "CBC-R" style prior-block
+        propagation.
+        
+        Returns a tuple of the IV and ciphertext.  
+
+        NOTE: If your target messages do not include an IV with the
+        ciphertext, you can instead opt to encrypt a suffix of the
+        message and include the IV as if it were a ciphertext block.
+        This block will decrypt to an uncontrollable random value, but
+        with careful placement, this might be ok.
+
+        """
+
         blocks = buffertools.splitBuffer(buffertools.pkcs7PadBuffer(plaintext, self.block_size), 
                                          self.block_size)
 

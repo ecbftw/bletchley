@@ -2,9 +2,7 @@ First Release
 =============
 
 * PaddingOracle
-  - change print statements to configurable debug statements
-
-* New tools for easy scripted encoding/decoding at command line
+  - Enable resumption of decryption in case of failure
 
 
 Future

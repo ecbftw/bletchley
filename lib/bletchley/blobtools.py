@@ -40,9 +40,15 @@ class DataEncoding(object):
 
     def isExample(self, blob):
         sblob = frozenset(blob)
-        return ((self.charset == None or sblob.issubset(self.charset)) and self.extraTests(blob))
+        if self.charset != None and not sblob.issubset(self.charset):
+            return False
+        return self.extraTests(blob)
     
     def extraTests(self, blob):
+        """May return True, False, or None, for is an example, isn't an
+        example, or unknown, respectively. 
+
+        """
         return True
 
     def decode(self, blob):
@@ -253,7 +259,7 @@ class percentEncoding(DataEncoding):
     def extraTests(self, blob):
         chunks = blob.split('%')
         if len(chunks) < 2:
-            return False
+            return None
         for c in chunks[1:]:
             if len(c) < 2:
                 return False
@@ -319,19 +325,25 @@ for enc,d,p in priorities:
 
 
 def possibleEncodings(blob):
-    ret_val = set()
+    likely = set()
+    possible = set()
     for name,encoding in encodings.items():
-        if encoding.isExample(blob):
-            ret_val.add(name)
-    return ret_val
+        result = encoding.isExample(blob)
+        if result == True:
+            likely.add(name)
+        elif result == None:
+            possible.add(name)
+    return likely,possible
 
 
 def encodingIntersection(blobs):
     ret_val = set(encodings.keys())
+    p = set(encodings.keys())
     for b in blobs:
-        ret_val &= possibleEncodings(b)
-
-    return ret_val
+        likely,possible = possibleEncodings(b)
+        ret_val &= likely | possible
+        p &= possible
+    return ret_val - p
 
 
 def bestEncoding(encs):
@@ -403,6 +415,7 @@ def int2binary(x, bits=8):
         return "".join(map(lambda y:str((x>>y)&1), range(bits-1, -1, -1)))
 
 
+#XXX: move this to buffertools
 def smartPermutateBlobs(blobs, block_size=8):
     """
     Intelligently permutates through blocks in blobs.
