@@ -1,14 +1,16 @@
-First Release
-=============
+Near Term
+=========
 
-* PaddingOracle
-  - Enable resumption of decryption in case of failure
+* Ciphertext block brute-force classes
+
+* A stream ciphertext probe tool to build a map of different error messages
+
+* A tool that behaves like http2py, but generates a POA script
+
 
 
 Future
 ======
-
-* A tool that behaves like http2py, but generates a POA script
 
 * Codetective
   Consider using parts of this, if useful

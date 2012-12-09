@@ -99,13 +99,17 @@ class POA:
         if(iv != None and len(iv)%block_size != 0):
             raise InvalidBlockError(block_size,len(iv))
 
-        self._oracle = oracle
-        self._ciphertext = ciphertext
-        self._iv = iv
         self.block_size = block_size
         self.decrypted = decrypted
         self.threads = threads
         self.log_fh = log_file
+
+        self._oracle = oracle
+        self._ciphertext = ciphertext
+        if iv == None:
+            self._iv = '\x00'*self.block_size
+        else:
+            self._iv = iv
 
 
     def log_message(self, s):
@@ -128,7 +132,7 @@ class POA:
                 break
             tweaked = struct.unpack("B", prior[i])[0] ^ 0xFF
             tweaked = struct.pack("B", tweaked)
-            if not self._oracle(self._ciphertext+prior[:i]+tweaked+prior[i+1:]+final):
+            if not self._oracle(self._ciphertext+prior[:i]+tweaked+prior[i+1:]+final, self._iv):
                 break
 
         pad_length = 0-i
@@ -138,7 +142,7 @@ class POA:
             # and making sure the padding succeeds
             tweaked = struct.unpack("B", prior[-1])[0] ^ (pad_length^1)
             tweaked = struct.pack("B", tweaked)
-            if self._oracle(self._ciphertext+prior[:-1]+tweaked+final):
+            if self._oracle(self._ciphertext+prior[:-1]+tweaked+final, self._iv):
                 ret_val = buffertools.pkcs7Pad(pad_length)
 
         else:
@@ -149,7 +153,7 @@ class POA:
             for j in range(1,256):
                 guess = struct.unpack("B", prior[-2])[0] ^ j
                 guess = struct.pack("B", guess)
-                if self._oracle(self._ciphertext+prior[:-2]+guess+tweaked+final):
+                if self._oracle(self._ciphertext+prior[:-2]+guess+tweaked+final, self._iv):
                     # XXX: Save the decrypted byte for later
                     ret_val = buffertools.pkcs7Pad(pad_length)
 
@@ -165,7 +169,7 @@ class POA:
             if self._thread_result != None:
                 # Stop if another thread found the result
                 break
-            if self._oracle(str(prefix+struct.pack("B",b)+suffix)):
+            if self._oracle(str(prefix+struct.pack("B",b)+suffix), self._iv):
                 self._thread_result = b
                 break
 
@@ -241,17 +245,18 @@ class POA:
         if len(self.decrypted) == 0:
             
             final = blocks[-1]
-            iv = self._iv
-            if iv == None:
-                iv = '\x00'*self.block_size
             if len(blocks) == 1:
                 # If only one block present, then try to use IV as prior
-                prior = iv
+                prior = self._iv
             else:
                 prior = blocks[-2]
 
             # Decrypt last block, starting with padding (quicker to decrypt)
             pad_bytes = self.probe_padding(prior, final)
+            if pad_bytes == None:
+                # XXX: custom exception
+                raise Exception
+
             decrypted = self.decrypt_block(prior, final, pad_bytes)
 
             # Now decrypt all other blocks except first block
@@ -259,7 +264,7 @@ class POA:
                 decrypted = self.decrypt_block(blocks[i-1], blocks[i]) + decrypted
 
             # Finally decrypt first block
-            decrypted = self.decrypt_block(iv, blocks[0]) + decrypted
+            decrypted = self.decrypt_block(self._iv, blocks[0]) + decrypted
         
         # Start where we left off last
         # XXX: test this
@@ -274,7 +279,7 @@ class POA:
                 partial = ''
 
             # Finally decrypt first block
-            decrypted = self.decrypt_block(iv, blocks[0]) + decrypted
+            decrypted = self.decrypt_block(self._iv, blocks[0]) + decrypted
             
         return buffertools.stripPKCS7Pad(decrypted)
 
@@ -305,9 +310,10 @@ class POA:
 
         NOTE: If your target messages do not include an IV with the
         ciphertext, you can instead opt to encrypt a suffix of the
-        message and include the IV as if it were a ciphertext block.
-        This block will decrypt to an uncontrollable random value, but
-        with careful placement, this might be ok.
+        message and include the IV in the the middle of the ciphertext as 
+        if it were an encrypted block. This one block alone will decrypt
+        to an uncontrollable random value, but with careful placement,
+        this might be ok.
 
         """
 
