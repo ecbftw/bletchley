@@ -41,6 +41,18 @@ delimited with newlines.  Various options are provided to give the
 analyst control over the block sizes and encoding used during analysis.
 See the tool's usage statement for more information.
 
+As an example, several tokens were encrypted using ECB mode and encoded
+using base64, and then percent (URL) encoding:
+{{{
+zRW5bHxcRYHHqi0nriqOzg%3D%3D
+meU8SyxVHE3Hqi0nriqOzg%3D%3D
+vTA9eA4hhbFlktsbYI4hIg%3D%3D
+meU8SyxVHE1lktsbYI4hIg%3D%3D
+}}}
+
+These tokens were then fed to bletchley-analyze:
+<img src="http://bletchley.googlecode.com/svn/wiki/images/bletchley-analyze.png" />
+
 1. <i>Bletchley's blobtools module currently supports 33 encoding variants,
 including various forms of hexadecimal, base32, base64, and percent
 encodings.</i>
