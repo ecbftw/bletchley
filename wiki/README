@@ -1,4 +1,15 @@
-
+All files with a ".wiki" extension will appear on google code as wiki
+documentation.
 
 Wiki syntax documented here:
   http://code.google.com/p/support/wiki/WikiSyntax
+
+
+To see how a page will be formatted ahead of time, you can edit an
+existing page on the web: 
+  http://code.google.com/p/bletchley/w/edit/Overview
+
+And then click "Preview".  However, DO NOT save pages on the web.  If
+you do so, then SVN synchronization will break.  Instead, just use the
+preview feature and then make the updates in this directory, which
+will be automatically synched to Google.

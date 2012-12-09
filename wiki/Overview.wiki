@@ -13,9 +13,38 @@ documentation may be lacking.  Contributions are welcome.
 == bletchley-analyze ==
 
 Analyzes samples of encrypted data in an attempt to decode samples to
-binary and identify patterns useful in cryptanalysis.  
+binary and identify patterns useful in cryptanalysis.  The purpose of
+the tool is to provide an cryptanalyst with a variety of information
+that is useful in determining how a token is encoded, encrypted and
+formatted.
+<br />
+bletchley-analyze currently performs two primary functions: iterative
+encoding detection and ciphertext-only block analysis.  Encrypted tokens
+are processed in multiple rounds. Within each round, the following
+occurs:
+<ul>
+ <li>Token length analysis is performed to attempt to determine possible
+ ciphertext block sizes, where applicable</li>
+ <li>The tokens are analyzed for blocks of data that are repeated
+ throughout any of the tokens</li>
+ <li>A hexadecimal dump and escaped binary/ascii string is printed for
+ each token with repeated blocks highlighted</li>
+ <li>The full set of all known and possible data encodings is
+ determined<sup>1</sup></li>
+ <li>An educated guess is made as to the most likely encoding is</li>
+ <li>All tokens are decoded using the most likely encoding, and then the
+ process is repeated until no further encodings are detected</li>
+</ul>
 
-TODO
+bletchley-analyze can read from stdin or from a file.  Tokens are
+delimited with newlines.  Various options are provided to give the
+analyst control over the block sizes and encoding used during analysis.
+See the tool's usage statement for more information.
+
+1. <i>Bletchley's blobtools module currently supports 33 encoding variants,
+including various forms of hexadecimal, base32, base64, and percent
+encodings.</i>
+
 
 == bletchley-encode ==
 TODO
