@@ -1,0 +1,35 @@
+Bletchley provides a variety of tools that make black box
+cryptanalysis easier by taking care of some of the more tedious
+engineering challenges. Bletchley is maintained by <a href="http://vsecurity.com/">VSR</a>.
+Bletchley is currently in the early stages of development, which means
+documentation may be lacking.  Contributions are welcome.
+
+*Contents*
+<wiki:toc max_depth="2" />
+
+
+= Command Line Tools =
+
+== bletchley-analyze ==
+
+Analyzes samples of encrypted data in an attempt to decode samples to
+binary and identify patterns useful in cryptanalysis.  
+
+TODO
+
+== bletchley-encode ==
+TODO
+
+== bletchley-decode ==
+TODO
+
+== bletchley-http2py ==
+TODO
+
+== bletchley-nextrand ==
+TODO
+
+
+= Libraries =
+
+TODO
