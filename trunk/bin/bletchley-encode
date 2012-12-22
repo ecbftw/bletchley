@@ -27,12 +27,23 @@ import argparse
 from bletchley import blobtools
 
 
-parser = argparse.ArgumentParser(description='A simple encoder script that is useful in shell scripts.')
-parser.add_argument('input_file', nargs='?', default=None,
-                    help='File containing encrypted blobs to analyze, one per line. Omit to read from stdin.')
-parser.add_argument('-e', dest='encoding_chain', type=str, required=True,
-                    help='Comma-separated sequence of encoding formats used to encode the token, starting with the last encoding to apply.')
+parser = argparse.ArgumentParser(
+    description='A simple encoder script that is useful in shell scripts.'
+    ' For more information, see:  http://code.google.com/p/bletchley/wiki/Overview')
+parser.add_argument(
+    'input_file', nargs='?', default=None,
+    help='File containing encrypted blobs to analyze, one per line. '
+    'Omit to read from stdin.')
+parser.add_argument(
+    '-e', dest='encoding_chain', type=str, required=True,
+    help='Comma-separated sequence of encoding formats used to encode the'
+    ' token, starting with the last encoding to apply.'
+    ' (Use "?" for a listing of supported encodings.)')
 options = parser.parse_args()
+
+if options.encoding_chain == '?':
+    print('\n\t'.join(['Supported encodings:']+blobtools.supportedEncodings()))
+    sys.exit(0)
 
 input_file = sys.stdin
 if options.input_file is not None:
@@ -42,4 +53,6 @@ blob = input_file.read()
 
 specified_encodings = options.encoding_chain.split(',')
 specified_encodings.reverse()
+# XXX: report invalid encodings
 sys.stdout.write(blobtools.encodeChain(specified_encodings, blob))
+sys.stdout.write('\n')

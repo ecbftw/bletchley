@@ -40,10 +40,18 @@ except:
     sys.stderr.write('       Under Debian, the package name is "python-lxml"\n.')
     sys.exit(1)
 
-parser = argparse.ArgumentParser(description='Process some integers.')
-parser.add_argument('requestfile', type=file, nargs='?', default=sys.stdin, 
-                    help='A file containing an HTTP request.  Defaults to stdin if omitted.')
-parser.add_argument('--burp', action='store_true', help='Input file is a XML export from Burp. (First request in file is used.)')
+parser = argparse.ArgumentParser(
+    description='A script which accepts an HTTP request and prints out a'
+    ' generated Python script which sends a similar request.  This is useful'
+    ' when one wants to automate sending a large number of requests to a'
+    ' particular page or application.'
+    ' For more information, see: http://code.google.com/p/bletchley/wiki/Overview')
+parser.add_argument(
+    'requestfile', type=file, nargs='?', default=sys.stdin, 
+    help='A file containing an HTTP request.  Defaults to stdin if omitted.')
+parser.add_argument(
+    '--burp', action='store_true', help='Input file is a XML export from Burp.'
+    ' (First request in file is used.)')
 args = parser.parse_args()
 
 if args.burp:

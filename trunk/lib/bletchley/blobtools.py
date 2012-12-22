@@ -323,6 +323,11 @@ for enc,d,p in priorities:
     e.priority = p
     encodings["%s/%s" % (enc.name, d)] = e
 
+def supportedEncodings():
+    e = encodings.keys()
+    e.sort()
+    return e
+
 
 def possibleEncodings(blob):
     likely = set()

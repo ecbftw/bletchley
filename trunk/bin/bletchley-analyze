@@ -28,11 +28,17 @@ import binascii
 from bletchley import blobtools,buffertools
 
 
-parser = argparse.ArgumentParser(description='Analyzes samples of encrypted data in an attempt to decode samples to binary and identify patterns useful in cryptanalysis.')
+parser = argparse.ArgumentParser(
+    description='Analyzes samples of encrypted data in an attempt to decode'
+    ' samples to binary and identify patterns useful in cryptanalysis.'
+    ' For more information, see:  http://code.google.com/p/bletchley/wiki/Overview')
 parser.add_argument('input_file', nargs='?', default=None,
-                    help='File containing encrypted blobs to analyze, one per line. Omit to read from stdin.')
+                    help='File containing encrypted blobs to analyze, one per'
+                    ' line. Omit to read from stdin.')
 parser.add_argument('-e', dest='encoding_chain', type=str, default=None,
-                    help='Comma-separated sequence of formats used to encode the tokens, beginning with the last one applied. (default: auto-detect)')
+                    help='Comma-separated sequence of formats used to encode'
+                    ' the tokens, beginning with the last one applied. '
+                    '(default: auto-detect. Use "?" for a listing of supported encodings.)')
 parser.add_argument('-b', dest='block_size', type=int, default=8,
                     help='The block size displayed and used in highlighting (default: 8)')
 parser.add_argument('-p', dest='output_lines', type=int, default=10,
@@ -43,10 +49,13 @@ parser.add_argument('-c256', action='store_const', const=True, default=False,
                     help='Use 256 color output for decoded highlights.')
 options = parser.parse_args()
 
+if options.encoding_chain == '?':
+    print('\n\t'.join(['Supported encodings:']+blobtools.supportedEncodings()))
+    sys.exit(0)
+
 input_file = sys.stdin
 if options.input_file is not None:
     input_file = file(options.input_file, 'rb')
-
 
 blobs = input_file.read().rstrip('\n').replace('\r', '').split('\n')
 #print(repr(blobs))
