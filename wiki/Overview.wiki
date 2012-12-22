@@ -36,13 +36,13 @@ occurs:
  process is repeated until no further encodings are detected</li>
 </ul>
 
-bletchley-analyze can read from stdin or from a file.  Tokens are
+<code>bletchley-analyze</code> can read from stdin or from a file.  Tokens are
 delimited with newlines.  Various options are provided to give the
 analyst control over the block sizes and encoding used during analysis.
 See the tool's usage statement for more information.
 
 As an example, several tokens were encrypted using ECB mode and encoded
-using base64, and then percent (URL) encoding:
+using base64, and then percent (URL) encoded:
 {{{
 zRW5bHxcRYHHqi0nriqOzg%3D%3D
 meU8SyxVHE3Hqi0nriqOzg%3D%3D
@@ -50,27 +50,51 @@ vTA9eA4hhbFlktsbYI4hIg%3D%3D
 meU8SyxVHE1lktsbYI4hIg%3D%3D
 }}}
 
-These tokens were then fed to bletchley-analyze:
+These tokens were then fed to <code>bletchley-analyze</code>:
 <img src="http://bletchley.googlecode.com/svn/wiki/images/bletchley-analyze.png" />
 
 1. <i>Bletchley's blobtools module currently supports 33 encoding variants,
 including various forms of hexadecimal, base32, base64, and percent
-encodings.</i>
+encodings. Try '<code>-e ?</code>' to list them.</i>
 
 
 == bletchley-encode ==
-TODO
+A simple tool to encode arbitrary data using a specified encoding chain.
+See the usage statement for more information.  A quick example:
+{{{
+$ echo 'Mallory Is My Friend.' | bletchley-encode -e percent/upper-plus,base64/rfc3548
+TWFsbG9yeSBJcyBNeSBGcmllbmQuCg%3D%3D
+}}}
+
+NOTE: The encoding chain is applied from right to left in order to be consistent with other tools.  
+That is, one can use the same encoding chain ordering for 
+<code>bletchley-encode</code>, <code>bletchley-decode</code>, and <code>bletchley-analyze</code>.
+
 
 == bletchley-decode ==
-TODO
+A simple tool to decode data using a specified encoding chain.  See the
+usage statement for more information.  A quick example:
+{{{
+$ echo 'TWFsbG9yeSBJcyBNeSBGcmllbmQuCg%3D%3D' | bletchley-decode -e percent/upper-plus,base64/rfc3548
+Mallory Is My Friend.
+}}}
 
 == bletchley-http2py ==
-TODO
+This script parses an HTTP request (provided via stdin or as a text
+file) and generates a Python script that sends (approximately) the same
+request.  This is useful when one wants to repeatedly send variations of
+a request that was observed to be sent by an application or web
+browser.  For more information, see the script's usage statement.
 
 == bletchley-nextrand ==
-TODO
+A simple program which computes the state of a Java Random class
+instance given two sequential outputs of 
+<code><a href="http://docs.oracle.com/javase/6/docs/api/java/util/Random.html#nextInt()">nextInt()</a></code>.
+For more information, see the usage statement.
 
 
 = Libraries =
 
 TODO
+
+(Hint: start with 'pydoc bletchley')
