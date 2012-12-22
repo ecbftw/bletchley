@@ -36,7 +36,7 @@ occurs:
  process is repeated until no further encodings are detected</li>
 </ul>
 
-<code>bletchley-analyze</code> can read from stdin or from a file.  Tokens are
+`bletchley-analyze` can read from stdin or from a file.  Tokens are
 delimited with newlines.  Various options are provided to give the
 analyst control over the block sizes and encoding used during analysis.
 See the tool's usage statement for more information.
@@ -50,12 +50,12 @@ vTA9eA4hhbFlktsbYI4hIg%3D%3D
 meU8SyxVHE1lktsbYI4hIg%3D%3D
 }}}
 
-These tokens were then fed to <code>bletchley-analyze</code>:
+These tokens were then fed to `bletchley-analyze`:
 <img src="http://bletchley.googlecode.com/svn/wiki/images/bletchley-analyze.png" />
 
 1. <i>Bletchley's blobtools module currently supports 33 encoding variants,
 including various forms of hexadecimal, base32, base64, and percent
-encodings. Try '<code>-e ?</code>' to list them.</i>
+encodings. Try '`-e ?`' to list them.</i>
 
 
 == bletchley-encode ==
@@ -68,7 +68,7 @@ TWFsbG9yeSBJcyBNeSBGcmllbmQuCg%3D%3D
 
 NOTE: The encoding chain is applied from right to left in order to be consistent with other tools.  
 That is, one can use the same encoding chain ordering for 
-<code>bletchley-encode</code>, <code>bletchley-decode</code>, and <code>bletchley-analyze</code>.
+`bletchley-encode`, `bletchley-decode`, and `bletchley-analyze`.
 
 
 == bletchley-decode ==
@@ -89,7 +89,7 @@ browser.  For more information, see the script's usage statement.
 == bletchley-nextrand ==
 A simple program which computes the state of a Java Random class
 instance given two sequential outputs of 
-<code><a href="http://docs.oracle.com/javase/6/docs/api/java/util/Random.html#nextInt()">nextInt()</a></code>.
+`<a href="http://docs.oracle.com/javase/6/docs/api/java/util/Random.html#nextInt()">nextInt()</a>`.
 For more information, see the usage statement.
 
 
