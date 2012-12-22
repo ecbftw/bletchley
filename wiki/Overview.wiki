@@ -89,7 +89,7 @@ browser.  For more information, see the script's usage statement.
 == bletchley-nextrand ==
 A simple program which computes the state of a Java Random class
 instance given two sequential outputs of 
-`<a href="http://docs.oracle.com/javase/6/docs/api/java/util/Random.html#nextInt()">nextInt()</a>`.
+<a href="http://docs.oracle.com/javase/6/docs/api/java/util/Random.html#nextInt()">`nextInt()`</a>.
 For more information, see the usage statement.
 
 
