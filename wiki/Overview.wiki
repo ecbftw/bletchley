@@ -118,4 +118,4 @@ We welcome any kind of help with the project, from new tools to bug
 fixes and documentation.  You might want to start with our 
 <a href="http://code.google.com/p/bletchley/source/browse/trunk/doc/TODO">TODO</a>
 list. To submit a patch, just check out a copy of our Subversion
-repository, make your changes, and submit the output of `svn diff`.
+repository, make your changes, and submit the output of `svn diff` to one of the project leaders.
