@@ -7,6 +7,8 @@ documentation may be lacking.  Contributions are welcome.
 *Contents*
 <wiki:toc max_depth="2" />
 
+= Installation = 
+See: <a href="http://code.google.com/p/bletchley/source/browse/trunk/INSTALL">INSTALL</a>
 
 = Command Line Tools =
 
@@ -95,6 +97,25 @@ For more information, see the usage statement.
 
 = Libraries =
 
+Hint: start with '`pydoc bletchley`'?
 TODO
 
-(Hint: start with 'pydoc bletchley')
+== blobtools ==
+TODO
+
+== CBC ==
+TODO
+
+
+= Support =
+
+Having trouble?  Submit an issue <a href="http://code.google.com/p/bletchley/issues/list">here</a>.
+
+
+= Contributing =
+
+We welcome any kind of help with the project, from new tools to bug
+fixes and documentation.  You might want to start with our 
+<a href="http://code.google.com/p/bletchley/source/browse/trunk/doc/TODO">TODO</a>
+list. To submit a patch, just check out a copy of our Subversion
+repository, make your changes, and submit the output of `svn diff`.

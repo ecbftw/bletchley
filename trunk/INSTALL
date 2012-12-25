@@ -1,0 +1,23 @@
+Bletchley Installation Guide
+============================
+
+Dependencies
+------------
+* Python 2.7+ (3.x not yet well tested, but supported)
+* scons (available as a package in most Linux distributions)
+* gcc
+
+
+Installing
+----------
+Build with:
+ $ scons
+
+And as root, install with:
+ # scons install
+
+
+Support
+-------
+Having trouble?  Submit an issue here: 
+  http://code.google.com/p/bletchley/issues/list
