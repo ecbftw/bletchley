@@ -31,6 +31,7 @@ import buffertools
 # abstract class
 class DataEncoding(object):
     charset = frozenset('')
+    extraneous_chars = ''
     dialect = None
     name = None
     priority = None
@@ -103,9 +104,12 @@ class base64Encoding(DataEncoding):
             self.c63 = ':'
             self.pad = '='
         
+        if 'newline' in dialect:
+            self.extraneous_chars = '\r\n'
+
         self.charset = frozenset('ABCDEFGHIJKLMNOPQRSTUVWXYZ'
                                  +'abcdefghijklmnopqrstuvwxyz0123456789'
-                                 +self.c62+self.c63+self.pad)
+                                 +self.c62+self.c63+self.pad+self.extraneous_chars)
 
     def _guessPadLength(self, nopad_len):
         length = ((4 - nopad_len % 4) % 4)
@@ -114,6 +118,9 @@ class base64Encoding(DataEncoding):
         return None
 
     def extraTests(self, blob):
+        for c in self.extraneous_chars:
+            blob = blob.replace(c, '')
+
         nopad = blob.rstrip(self.pad)
         padlen_guess = self._guessPadLength(len(nopad))
         if padlen_guess == None:
@@ -128,6 +135,9 @@ class base64Encoding(DataEncoding):
         return (self.pad not in nopad) and (len(blob) == len(nopad)+padlen_guess)
 
     def decode(self, blob):
+        for c in self.extraneous_chars:
+            blob = blob.replace(c, '')
+
         if self.dialect.endswith('nopad'):
             if self.pad in blob:
                 raise Exception("Unpadded base64 string contains pad character")
@@ -291,6 +301,7 @@ priorities = [
     (base32Encoding, 'rfc3548lower-nopad', 161),
     (base64Encoding, 'rfc3548', 200),
     (base64Encoding, 'rfc3548-nopad', 201),
+    (base64Encoding, 'rfc3548-newline', 202),
     (base64Encoding, 'filename', 210),
     (base64Encoding, 'filename-nopad', 211),
     (base64Encoding, 'url1', 230),
