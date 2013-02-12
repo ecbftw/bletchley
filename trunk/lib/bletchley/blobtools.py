@@ -286,9 +286,9 @@ class percentEncoding(DataEncoding):
     # XXX: should technically produce quoted digits in same upper/lower case
     def encode(self, blob):
         if 'plus' in self.dialect:
-            return urllib.quote(blob)
+            return urllib.quote(blob, '')
         else:
-            return urllib.quote_plus(blob)
+            return urllib.quote_plus(blob, '')
 
 
 priorities = [

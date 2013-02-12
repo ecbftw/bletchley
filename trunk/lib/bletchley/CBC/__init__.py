@@ -230,6 +230,8 @@ class POA:
 
         while(len(last_bytes)!=self.block_size):
             last_bytes = self.decrypt_next_byte(prior, block, last_bytes)
+
+        self.log_message("Decrypted block: %s" % repr(last_bytes))
         return last_bytes
 
 
@@ -281,7 +283,7 @@ class POA:
             # Finally decrypt first block
             decrypted = self.decrypt_block(self._iv, blocks[0]) + decrypted
             
-        return buffertools.stripPKCS7Pad(decrypted)
+        return buffertools.stripPKCS7Pad(decrypted, self.block_size)
 
 
     def encrypt_block(self, plaintext, ciphertext):

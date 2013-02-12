@@ -80,7 +80,6 @@ def terminalHighlightedString(code, s):
 def printColoredHexDump(blobs, group_size=8):    
     line_size = 64
     group_size *= 2 # two hex digits per byte
-    print(group_size)
     hex_blobs = map(binascii.b2a_hex, blobs)
     color_map = buffertools.blockWiseColorMap(group_size, hex_blobs)
 
