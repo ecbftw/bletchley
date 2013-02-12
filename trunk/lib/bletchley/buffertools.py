@@ -121,19 +121,26 @@ def pkcs7PadBuffer(buf, block_size):
 def pkcs7Pad(length):
 	return chr(length) * length
 
-def stripPKCS7Pad(decrypted, block_size=16):
+def stripPKCS7Pad(decrypted, block_size=16, log_file=None):
     '''
     Validates a plaintext containing a PKCS5/7 pad, then returns the plaintext 
     without the pad.
     '''
     if len(decrypted) % block_size != 0:
+        if log_file:
+            log_file.write("Can't strip PKCS7 pad.  Plaintext not correct length\n")
         return None
 
     length = ord(decrypted[-1])
     if length > block_size:
+        if log_file:
+            log_file.write("Can't strip PKCS7 pad.  Final byte length (%d) too large.\n" % length)
         return None
 
-    if decrypted[0-length:] != pkcs7Pad(length):
+    pad = decrypted[0-length:]
+    if pad != pkcs7Pad(length):
+        if log_file:
+            log_file.write("Can't strip PKCS7 pad.  Pads don't match. (%s != %s)\n" % (repr(pad), repr(pkcs7Pad(length))))
         return None
 
     return decrypted[0:0-length]

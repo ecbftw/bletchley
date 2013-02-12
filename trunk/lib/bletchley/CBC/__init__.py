@@ -283,7 +283,7 @@ class POA:
             # Finally decrypt first block
             decrypted = self.decrypt_block(self._iv, blocks[0]) + decrypted
             
-        return buffertools.stripPKCS7Pad(decrypted, self.block_size)
+        return buffertools.stripPKCS7Pad(decrypted, self.block_size, self.log_fh)
 
 
     def encrypt_block(self, plaintext, ciphertext):
