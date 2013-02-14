@@ -87,7 +87,7 @@ class POA:
          may be used to restart the decryption process where it was
          previously left off.  This argument is assumed to contain the
          final N bytes (for an N-byte argument) of the plaintext; that
-         is, the tail of the plaintext.
+         is, the tail of the plaintext including the pad.
 
         log_file -- A Python file object where log messages will be
          written.
@@ -98,7 +98,9 @@ class POA:
             raise InvalidBlockError(block_size,len(ciphertext))
         if(iv != None and len(iv)%block_size != 0):
             raise InvalidBlockError(block_size,len(iv))
-
+        if len(decrypted) > len(ciphertext):
+            raise Exception #XXX: custom exception
+        
         self.block_size = block_size
         self.decrypted = decrypted
         self.threads = threads
@@ -117,13 +119,21 @@ class POA:
             self.log_fh.write(s+'\n')
 
 
-    def probe_padding(self, prior, final):
+    def probe_padding(self):
         """Attempts to verify that a CBC padding oracle exists and then determines the
         pad value.  
 
         Returns the pad string, or None on failure. 
         XXX: Currently only works for PKCS 5/7.
         """
+
+        blocks = buffertools.splitBuffer(self._ciphertext, self.block_size)
+        final = blocks[-1]
+        if len(blocks) == 1:
+            # If only one block present, then try to use IV as prior
+            prior = self._iv
+        else:
+            prior = blocks[-2]
 
         ret_val = None
         # First probe for beginning of pad
@@ -156,9 +166,6 @@ class POA:
                 if self._oracle(self._ciphertext+prior[:-2]+guess+tweaked+final, self._iv):
                     # XXX: Save the decrypted byte for later
                     ret_val = buffertools.pkcs7Pad(pad_length)
-
-        if ret_val:
-            self.decrypted = ret_val
 
         return ret_val
 
@@ -215,7 +222,7 @@ class POA:
         
         if self._thread_result == None:
             self.log_message("Value of a byte could not be determined.  Current plaintext suffix: "+ repr(self.decrypted))
-            raise Exception
+            raise Exception #XXX: custom exception
 
         decrypted = struct.pack("B",self._thread_result^base^(numKnownBytes+1))
         self.decrypted = decrypted + self.decrypted
@@ -235,54 +242,50 @@ class POA:
         return last_bytes
 
 
-    # XXX: Add logic to begin where decryption previously left off
     def decrypt(self):
         """Decrypts the previously supplied ciphertext. If the IV was
         not provided, it assumes a IV of zero bytes.
 
         """
 
-        blocks = buffertools.splitBuffer(self._ciphertext, self.block_size)
-
         if len(self.decrypted) == 0:
-            
-            final = blocks[-1]
-            if len(blocks) == 1:
-                # If only one block present, then try to use IV as prior
-                prior = self._iv
-            else:
-                prior = blocks[-2]
-
-            # Decrypt last block, starting with padding (quicker to decrypt)
-            pad_bytes = self.probe_padding(prior, final)
+            # First decrypt the padding (quick to decrypt and good sanity check)
+            pad_bytes = self.probe_padding()
             if pad_bytes == None:
                 # XXX: custom exception
                 raise Exception
-
-            decrypted = self.decrypt_block(prior, final, pad_bytes)
-
-            # Now decrypt all other blocks except first block
-            for i in range(len(blocks)-2, 0, -1):
-                decrypted = self.decrypt_block(blocks[i-1], blocks[i]) + decrypted
-
-            # Finally decrypt first block
-            decrypted = self.decrypt_block(self._iv, blocks[0]) + decrypted
-        
-        # Start where we left off last
-        # XXX: test this more
-        else: 
-            num_partial = len(self.decrypted) % self.block_size
-            finished_blocks = len(self.decrypted) / self.block_size
-            partial = self.decrypted[0:num_partial]
-            decrypted = self.decrypted[num_partial:]
-
-            for i in range(len(blocks)-1-finished_blocks, 0, -1):
-                decrypted = self.decrypt_block(blocks[i-1], blocks[i], partial) + decrypted
-                partial = ''
-                
-            # Finally decrypt first block
-            decrypted = self.decrypt_block(self._iv, blocks[0]) + decrypted
             
+            self.decrypted = pad_bytes
+
+
+        # Start where we left off last, whether that be with just a pad,
+        # or with additional decrypted blocks.
+
+        # number of bytes in any partially decrypted blocks
+        num_partial = len(self.decrypted) % self.block_size
+
+        # number of blocks fully decrypted
+        finished_blocks = len(self.decrypted) / self.block_size
+
+        # contents of the partial block
+        partial = self.decrypted[0:num_partial]
+
+        # contents of fully decrypted blocks
+        decrypted = self.decrypted[num_partial:]
+        
+        blocks = buffertools.splitBuffer(self._ciphertext, self.block_size)
+
+        # Start with the partially decrypted block at the end, and work
+        # our way to the front.  Don't decrypt the very first block of
+        # the ciphertext yet.
+        for i in range(len(blocks)-1-finished_blocks, 0, -1):
+            decrypted = self.decrypt_block(blocks[i-1], blocks[i], partial) + decrypted
+            partial = ''
+                
+        # Finally decrypt first block
+        decrypted = self.decrypt_block(self._iv, blocks[0], partial) + decrypted
+        
+        # Remove the padding and return
         return buffertools.stripPKCS7Pad(decrypted, self.block_size, self.log_fh)
 
 
