@@ -269,17 +269,17 @@ class POA:
             decrypted = self.decrypt_block(self._iv, blocks[0]) + decrypted
         
         # Start where we left off last
-        # XXX: test this
+        # XXX: test this more
         else: 
             num_partial = len(self.decrypted) % self.block_size
             finished_blocks = len(self.decrypted) / self.block_size
             partial = self.decrypted[0:num_partial]
             decrypted = self.decrypted[num_partial:]
 
-            for i in range(-1-finished_blocks, 0, -1):
-                decrypted = self.decrypt_block(blocks[i-1], blocks[i], partial)
+            for i in range(len(blocks)-1-finished_blocks, 0, -1):
+                decrypted = self.decrypt_block(blocks[i-1], blocks[i], partial) + decrypted
                 partial = ''
-
+                
             # Finally decrypt first block
             decrypted = self.decrypt_block(self._iv, blocks[0]) + decrypted
             
