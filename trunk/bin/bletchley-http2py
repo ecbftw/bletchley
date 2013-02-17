@@ -14,7 +14,7 @@ or any number of other annoying things, then using an HTTP library is a
 lot more convenient.  This script attempts to make that conversion easy.
 
 
-Copyright (C) 2011-2012 Virtual Security Research, LLC
+Copyright (C) 2011-2013 Virtual Security Research, LLC
 Author: Timothy D. Morgan
 
  This program is free software: you can redistribute it and/or modify
@@ -63,16 +63,6 @@ else:
     input_req = args.requestfile.read()
 
 
-print('''#!/usr/bin/env python
-
-import sys
-# function with either Python 2.7 or 3.x
-try:
-    import http.client as httpc
-except:
-    import httplib as httpc
-''')
-
 
 if '\r\n\r\n' in input_req:
     raw_headers,body = input_req.split('\r\n\r\n', 1)
@@ -109,7 +99,7 @@ for l in header_lines[1:]:
     if name.lower() not in ['accept','accept-language',
                             'accept-encoding','accept-charset',
                             'connection', 'keep-alive', 'host', 
-                            'content-length']:
+                            'content-length', 'proxy-connection']:
         headers.append((name,[value]))
 
     if name.lower() == 'host':
@@ -120,6 +110,18 @@ for l in header_lines[1:]:
         else:
             host = value
 
+
+print('''#!/usr/bin/env python
+
+import sys
+# function with either Python 2.7 or 3.x
+try:
+    import http.client as httpc
+except:
+    import httplib as httpc
+''')
+
+
 print('''
 # TODO: ensure the host, port, and SSL settings are correct.
 host = %s
@@ -128,9 +130,12 @@ use_ssl = %s
 ''' % (repr(host),repr(port),repr(use_ssl)))
 
 chunked_body = '\n            '.join([repr(body[i:i+40]) for i in range(0,len(body),40)])
+if chunked_body == '':
+    chunked_body = "''"
 
 print('''
-def sendRequest(connection):
+# TODO: use "data" to supply any parameters to be included in the request
+def sendRequest(connection, data=None):
     method = %s
     path = %s
     body = (%s)
@@ -154,19 +159,28 @@ print('''
     return connection.getresponse()
 
 
-connection = None
-if use_ssl:
-    connection = httpc.HTTPSConnection(host, port)
-else:
-    connection = httpc.HTTPConnection(host, port)
+def newConnection():
+    connection = None
+    if use_ssl:
+        return httpc.HTTPSConnection(host, port)
+    else:
+        return httpc.HTTPConnection(host, port)
 
-# TODO: customize code here to retrieve what you need from the response(s)
-# For information on the response object's interface, see:
-#   http://docs.python.org/library/httplib.html#httpresponse-objects
 
-connection.connect()
-response = sendRequest(connection)
-print(response.getheaders())
-print(repr(response.read()))
-connection.close()
+def fetch(data):
+    ret_val = None
+    connection = newConnection()
+
+    # TODO: customize code here to retrieve what you need from the response(s)
+    # For information on the response object's interface, see:
+    #   http://docs.python.org/library/httplib.html#httpresponse-objects
+    response = sendRequest(connection, data)
+    print(response.getheaders())
+    print(repr(response.read()))
+
+    connection.close()
+    return ret_val
+
+data = ''
+fetch(data)
 ''')
