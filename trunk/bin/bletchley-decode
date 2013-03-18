@@ -1,6 +1,6 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
-# Requires Python 2.7+
+# Requires Python 3+
 
 '''
 Simple decoder script; useful in shell scripts
@@ -44,11 +44,11 @@ if options.encoding_chain == '?':
     print('\n\t'.join(['Supported encodings:']+blobtools.supportedEncodings()))
     sys.exit(0)
 
-input_file = sys.stdin
+input_file = sys.stdin.buffer
 if options.input_file is not None:
-    input_file = file(options.input_file, 'rb')
+    input_file = open(options.input_file, 'rb')
 
-blob = input_file.read()
+blob = input_file.read().rstrip(b'\r\n')
 
 specified_encodings = options.encoding_chain.split(',')
-sys.stdout.write(blobtools.decodeChain(specified_encodings, blob))
+sys.stdout.buffer.write(blobtools.decodeChain(specified_encodings, blob))

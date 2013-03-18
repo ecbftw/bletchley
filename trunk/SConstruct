@@ -64,10 +64,10 @@ env.Install(destdir+bindir, [bletchley_nextrand, 'bin/bletchley-analyze',
 #if os.getuid() == 0:
 #   env.AddPostAction(libinstall, 'ldconfig')
 
-if sys.version_info[0] == 2:
-   install_items.append('bletchley-python2.log')
-   env.Command('bletchley-python2.log', Glob('lib/bletchley/*.py')+Glob('lib/bletchley/CBC/*.py'),
-               "python bletchley-distutils install --root=/%s | tee bletchley-python2.log" % destdir)
+#if sys.version_info[0] == 2:
+#   install_items.append('bletchley-python2.log')
+#   env.Command('bletchley-python2.log', Glob('lib/bletchley/*.py')+Glob('lib/bletchley/CBC/*.py'),
+#               "python bletchley-distutils install --root=/%s | tee bletchley-python2.log" % destdir)
 
 python_path = os.popen('which python3').read()
 if python_path != '':

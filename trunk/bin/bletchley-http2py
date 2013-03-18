@@ -1,11 +1,12 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
-# Requires Python 2.7+
+# Requires Python 3+
 
 '''
-This script reads a raw HTTP request from stdin and writes to stdout
-a Python script.  The generated script sends the same (or a very similar) 
-request using the httplib/http.client libraries.
+This script reads a raw HTTP request and writes to stdout a Python
+script.  The generated script sends the same (or a very similar) 
+request using the standard httplib/http.client library, or optionally
+using the more user friendly python-requests library.
 
 Certainly if you have a raw request, you could simply send it via TCP
 sockets, but if for some reason the server behaves oddly with flow control,
@@ -33,12 +34,6 @@ Author: Timothy D. Morgan
 
 import sys
 import argparse
-try:
-    from lxml import etree
-except:
-    sys.stderr.write('ERROR: Could not import lxml module.  Ensure it is installed.\n')
-    sys.stderr.write('       Under Debian, the package name is "python-lxml"\n.')
-    sys.exit(1)
 
 parser = argparse.ArgumentParser(
     description='A script which accepts an HTTP request and prints out a'
@@ -47,21 +42,14 @@ parser = argparse.ArgumentParser(
     ' particular page or application.'
     ' For more information, see: http://code.google.com/p/bletchley/wiki/Overview')
 parser.add_argument(
-    'requestfile', type=file, nargs='?', default=sys.stdin, 
+    'requestfile', type=open, nargs='?', default=sys.stdin, 
     help='A file containing an HTTP request.  Defaults to stdin if omitted.')
 parser.add_argument(
-    '--burp', action='store_true', help='Input file is a XML export from Burp.'
-    ' (First request in file is used.)')
+    '--requests', action='store_true', help='Generate a script that uses the'
+    ' python-requests module rather than httplib/http.client (experimental).')
+
 args = parser.parse_args()
-
-if args.burp:
-    safe_parser = etree.ETCompatXMLParser(resolve_entities=False)
-    root = etree.parse(args.requestfile, parser=safe_parser)
-    input_req = root.xpath('/items/item/request')[0].text
-    root = None
-else:
-    input_req = args.requestfile.read()
-
+input_req = args.requestfile.read()
 
 
 if '\r\n\r\n' in input_req:
@@ -78,13 +66,14 @@ method,path,version = header_lines[0].split(' ', 2)
 host = 'TODO'
 port = 80
 use_ssl = False
+protocol = 'http'
 
 headers = []
 for l in header_lines[1:]:
     if len(l) < 1: 
         break
     # Handle header line continuations
-    if l[0] == '\t':
+    if l[0] in ' \t':
         if len(headers) == 0:
             continue
         name,values = headers[-1]
@@ -107,33 +96,89 @@ for l in header_lines[1:]:
             host,port = value.split(':',1)
             if port == 443:
                 use_ssl = True
+                protocol = 'https'
         else:
             host = value
 
 
-print('''#!/usr/bin/env python
+formatted_body = '\n            '.join([repr(body[i:i+40].encode()) for i in range(0,len(body),40)])
+if formatted_body == '':
+    formatted_body = "b''"
+
+
+if args.requests:
+    print('''#!/usr/bin/env python3
 
 import sys
-# function with either Python 2.7 or 3.x
 try:
-    import http.client as httpc
+    import requests
 except:
-    import httplib as httpc
+    sys.stderr.write('ERROR: Could not import requests module.  Ensure it is installed.\\n')
+    sys.stderr.write('       Under Debian, the package name is "python3-requests"\\n.')
+    sys.exit(1)
+
+
+# TODO: ensure the host, port, and SSL settings are correct.
+host = %s
+port = %s
+protocol = %s
+''' % (repr(host),repr(port),repr(protocol)))
+
+    headers = dict(headers)
+    # XXX: We don't currently support exactly formatted header
+    #      continuations with python requests, but this should be
+    #      semantically equivalent.
+    for h in headers.keys():
+        headers[h] = ' '.join(headers[h])
+
+    print('''
+session = requests.Session()
+# TODO: use "data" to supply any parameters to be included in the request
+def sendRequest(session, data=None):
+    method = %s
+    path = %s
+    headers = %s
+    url = "%%s://%%s:%%d%%s" %% (protocol,host,port,path)
+    body = (%s)
+
+    return session.request(method, url, headers=headers, data=body)
+    ''' % (repr(method), repr(path), repr(headers), formatted_body))
+
+    print('''    
+
+def fetch(data):
+    global session
+    ret_val = None
+
+    # TODO: customize code here to retrieve what you need from the response(s)
+    # For information on the response object's interface, see:
+    #   http://docs.python-requests.org/en/latest/api/#requests.Response
+    response = sendRequest(session, data)
+    print(response.headers)
+    print(repr(response.content))
+
+    return ret_val
+
+data = ''
+fetch(data)
 ''')
 
 
-print('''
+
+else:
+    print('''#!/usr/bin/env python3
+
+import sys
+import http.client as httpc
+
+
 # TODO: ensure the host, port, and SSL settings are correct.
 host = %s
 port = %s
 use_ssl = %s
 ''' % (repr(host),repr(port),repr(use_ssl)))
 
-chunked_body = '\n            '.join([repr(body[i:i+40]) for i in range(0,len(body),40)])
-if chunked_body == '':
-    chunked_body = "''"
-
-print('''
+    print('''
 # TODO: use "data" to supply any parameters to be included in the request
 def sendRequest(connection, data=None):
     method = %s
@@ -141,16 +186,16 @@ def sendRequest(connection, data=None):
     body = (%s)
     
     connection.putrequest(method, path)
-    ''' % (repr(method), repr(path), chunked_body))
+    ''' % (repr(method), repr(path), formatted_body))
 
-for name,values in headers:
-    if len(values) > 1:
-        continuations = ','.join([repr(v) for v in values[1:]])
-        print('''    connection.putheader(%s, %s, %s)''' % (repr(name),repr(values[0]),continuations))
-    else:
-        print('''    connection.putheader(%s, %s)''' % (repr(name),repr(values[0])))
+    for name,values in headers:
+        if len(values) > 1:
+            continuations = ','.join([repr(v) for v in values[1:]])
+            print('''    connection.putheader(%s, %s, %s)''' % (repr(name),repr(values[0]),continuations))
+        else:
+            print('''    connection.putheader(%s, %s)''' % (repr(name),repr(values[0])))
 
-print('''    
+    print('''    
     if len(body) > 0:
         connection.putheader('Content-Length', len(body))
     connection.endheaders()
@@ -160,7 +205,6 @@ print('''
 
 
 def newConnection():
-    connection = None
     if use_ssl:
         return httpc.HTTPSConnection(host, port)
     else:

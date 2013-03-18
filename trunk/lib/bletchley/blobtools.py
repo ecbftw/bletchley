@@ -21,17 +21,58 @@ import sys
 import string
 import base64
 import binascii
-import urllib
 import fractions
 import operator
 import functools
 import itertools
-import buffertools
+from . import buffertools
+
+
+# urllib.parse's functions are not well suited for encoding/decoding
+# bytes or managing encoded case 
+def _percentEncode(binary, plus=False, upper=True):
+    fmt = "%%%.2X"
+    if upper:
+        fmt = "%%%.2x"
+
+    ret_val = b''
+    for c in binary:
+        if c not in b'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789':
+            ret_val += (fmt % c).encode('ascii')
+        elif plus and (c == 20):
+            ret_val += b'+'
+        else:
+            ret_val += c
+    
+    return ret_val
+
+
+def _percentDecode(binary, plus=False):
+    ret_val = b''
+    if plus:
+        binary = binary.replace(b'+', b' ')
+    if binary == b'':
+        return b''
+    chunks = binary.split(b'%')
+    if binary[0] == 0x25:
+        chunks = chunks[1:]
+
+    for chunk in chunks:
+        if len(chunk) < 2:
+            return None
+        try:
+            ret_val += bytes([int(chunk[0:2], 16)]) + chunk[2:]
+        except:
+            print(repr(chunk))
+            return None
+            
+    return ret_val
+
 
 # abstract class
 class DataEncoding(object):
-    charset = frozenset('')
-    extraneous_chars = ''
+    charset = frozenset(b'')
+    extraneous_chars = b''
     dialect = None
     name = None
     priority = None
@@ -64,51 +105,51 @@ class base64Encoding(DataEncoding):
     def __init__(self, dialect='rfc3548'):
         super(base64Encoding, self).__init__(dialect)
         if dialect.startswith('rfc3548'):
-            self.c62 = '+'
-            self.c63 = '/'
-            self.pad = '='
+            self.c62 = b'+'
+            self.c63 = b'/'
+            self.pad = b'='
         elif dialect.startswith('filename'):
-            self.c62 = '+'
-            self.c63 = '-'
-            self.pad = '='
+            self.c62 = b'+'
+            self.c63 = b'-'
+            self.pad = b'='
         elif dialect.startswith('url1'):
-            self.c62 = '-'
-            self.c63 = '_'
-            self.pad = '='
+            self.c62 = b'-'
+            self.c63 = b'_'
+            self.pad = b'='
         elif dialect.startswith('url2'):
-            self.c62 = '-'
-            self.c63 = '_'
-            self.pad = '.'
+            self.c62 = b'-'
+            self.c63 = b'_'
+            self.pad = b'.'
         elif dialect.startswith('url3'):
-            self.c62 = '_'
-            self.c63 = '-'
-            self.pad = '.'
+            self.c62 = b'_'
+            self.c63 = b'-'
+            self.pad = b'.'
         elif dialect.startswith('url4'):
-            self.c62 = '-'
-            self.c63 = '_'
-            self.pad = '!'
+            self.c62 = b'-'
+            self.c63 = b'_'
+            self.pad = b'!'
         elif dialect.startswith('url5'):
-            self.c62 = '+'
-            self.c63 = '/'
-            self.pad = '$'
+            self.c62 = b'+'
+            self.c63 = b'/'
+            self.pad = b'$'
         elif dialect.startswith('otkurl'):
-            self.c62 = '-'
-            self.c63 = '_'
-            self.pad = '*'
+            self.c62 = b'-'
+            self.c63 = b'_'
+            self.pad = b'*'
         elif dialect.startswith('xmlnmtoken'):
-            self.c62 = '.'
-            self.c63 = '-'
-            self.pad = '='
+            self.c62 = b'.'
+            self.c63 = b'-'
+            self.pad = b'='
         elif dialect.startswith('xmlname'):
-            self.c62 = '_'
-            self.c63 = ':'
-            self.pad = '='
+            self.c62 = b'_'
+            self.c63 = b':'
+            self.pad = b'='
         
         if 'newline' in dialect:
-            self.extraneous_chars = '\r\n'
+            self.extraneous_chars = b'\r\n'
 
-        self.charset = frozenset('ABCDEFGHIJKLMNOPQRSTUVWXYZ'
-                                 +'abcdefghijklmnopqrstuvwxyz0123456789'
+        self.charset = frozenset(b'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
+                                 +b'abcdefghijklmnopqrstuvwxyz0123456789'
                                  +self.c62+self.c63+self.pad+self.extraneous_chars)
 
     def _guessPadLength(self, nopad_len):
@@ -119,7 +160,7 @@ class base64Encoding(DataEncoding):
 
     def extraTests(self, blob):
         for c in self.extraneous_chars:
-            blob = blob.replace(c, '')
+            blob = blob.replace(bytes([c]), b'')
 
         nopad = blob.rstrip(self.pad)
         padlen_guess = self._guessPadLength(len(nopad))
@@ -136,7 +177,7 @@ class base64Encoding(DataEncoding):
 
     def decode(self, blob):
         for c in self.extraneous_chars:
-            blob = blob.replace(c, '')
+            blob = blob.replace(bytes(c), b'')
 
         if self.dialect.endswith('nopad'):
             if self.pad in blob:
@@ -149,7 +190,7 @@ class base64Encoding(DataEncoding):
             blob = blob+(self.pad*padlen)
 
         if not self.dialect.startswith('rfc3548'):
-            table = string.maketrans(self.c62+self.c63+self.pad, '+/=')
+            table = string.maketrans(self.c62+self.c63+self.pad, b'+/=')
             blob = blob.translate(table)
 
         return base64.standard_b64decode(blob)
@@ -159,7 +200,7 @@ class base64Encoding(DataEncoding):
         ret_val = base64.standard_b64encode(blob)
 
         if not self.dialect.startswith('rfc3548'):
-            table = string.maketrans('+/=', self.c62+self.c63+self.pad)
+            table = string.maketrans(b'+/=', self.c62+self.c63+self.pad)
             ret_val = ret_val.translate(table)
 
         if ret_val != None and self.dialect.endswith('nopad'):
@@ -173,12 +214,12 @@ class base32Encoding(DataEncoding):
     def __init__(self, dialect='rfc3548upper'):
         super(base32Encoding, self).__init__(dialect)
         if dialect.startswith('rfc3548upper'):
-            self.pad = '='
-            self.charset = frozenset('ABCDEFGHIJKLMNOPQRSTUVWXYZ234567'+self.pad)
+            self.pad = b'='
+            self.charset = frozenset(b'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567'+self.pad)
 
         elif dialect.startswith('rfc3548lower'):
-            self.pad = '='
-            self.charset = frozenset('abcdefghijklmnopqrstuvwxyz234567'+self.pad)
+            self.pad = b'='
+            self.charset = frozenset(b'abcdefghijklmnopqrstuvwxyz234567'+self.pad)
 
     def _guessPadLength(self, nopad_len):
         pad_lengths = {0:0, 7:1, 5:3, 4:4, 2:6}
@@ -202,7 +243,7 @@ class base32Encoding(DataEncoding):
     def decode(self, blob):
         if self.dialect.endswith('nopad'):
             if self.pad in blob:
-                raise Exception("Unpadded base64 string contains pad character")
+                raise Exception("Unpadded base32 string contains pad character")
 
             padlen = self._guessPadLength(len(blob))
             if padlen == None:
@@ -232,11 +273,11 @@ class hexEncoding(DataEncoding):
     def __init__(self, dialect='mixed'):
         super(hexEncoding, self).__init__(dialect)
         if 'mixed' in dialect:
-            self.charset = frozenset('ABCDEFabcdef0123456789')
+            self.charset = frozenset(b'ABCDEFabcdef0123456789')
         elif 'upper' in dialect:
-            self.charset = frozenset('ABCDEF0123456789')            
+            self.charset = frozenset(b'ABCDEF0123456789')            
         elif 'lower' in dialect:
-            self.charset = frozenset('abcdef0123456789')
+            self.charset = frozenset(b'abcdef0123456789')
 
 
     def extraTests(self, blob):
@@ -260,14 +301,14 @@ class percentEncoding(DataEncoding):
         super(percentEncoding, self).__init__(dialect)
         self.charset = None
         if 'mixed' in dialect:
-            self.hexchars = frozenset('ABCDEFabcdef0123456789')
+            self.hexchars = frozenset(b'ABCDEFabcdef0123456789')
         elif 'upper' in dialect:
-            self.hexchars = frozenset('ABCDEF0123456789')            
+            self.hexchars = frozenset(b'ABCDEF0123456789')            
         elif 'lower' in dialect:
-            self.hexchars = frozenset('abcdef0123456789')
+            self.hexchars = frozenset(b'abcdef0123456789')
 
     def extraTests(self, blob):
-        chunks = blob.split('%')
+        chunks = blob.split(b'%')
         if len(chunks) < 2:
             return None
         for c in chunks[1:]:
@@ -278,17 +319,20 @@ class percentEncoding(DataEncoding):
         return True
 
     def decode(self, blob):
+        plus = False
         if 'plus' in self.dialect:
-            return urllib.unquote(blob)
-        else:
-            return urllib.unquote_plus(blob)
+            plus = True
+        return _percentDecode(blob, plus=plus)
 
-    # XXX: should technically produce quoted digits in same upper/lower case
     def encode(self, blob):
+        upper = True
+        plus = False
         if 'plus' in self.dialect:
-            return urllib.quote(blob, '')
-        else:
-            return urllib.quote_plus(blob, '')
+            plus = True
+        if 'lower' in self.dialect:
+            upper = False
+
+        return _percentEncode(blob, plus=plus, upper=upper)
 
 
 priorities = [
@@ -335,7 +379,7 @@ for enc,d,p in priorities:
     encodings["%s/%s" % (enc.name, d)] = e
 
 def supportedEncodings():
-    e = encodings.keys()
+    e = list(encodings.keys())
     e.sort()
     return e
 
@@ -379,10 +423,10 @@ def encode(encoding, blob):
     return encodings[encoding].encode(blob)
 
 def decodeAll(encoding, blobs):
-    return map(encodings[encoding].decode, blobs)
+    return [encodings[encoding].decode(b) for b in blobs]
 
 def encodeAll(encoding, blobs):
-    return map(encodings[encoding].encode, blobs)
+    return [encodings[encoding].encode(b) for b in blobs]
 
 def decodeChain(decoding_chain, blob):
     for decoding in decoding_chain:
@@ -411,7 +455,7 @@ def maxBlockSize(blob_lengths):
     return divisor
 
 
-allTrue = functools.partial(reduce, (lambda x,y: x and y))
+allTrue = functools.partial(functools.reduce, (lambda x,y: x and y))
 
 def checkCommonBlocksizes(lengths):
     common_block_sizes = (8,16,20)

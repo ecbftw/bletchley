@@ -74,7 +74,7 @@ def blockWiseColorMap(block_size, blobs):
                 block_counts[block] = 0  # one exists
 
     colors = {}
-    for block,count in block_counts.iteritems():
+    for block,count in block_counts.items():
         if count == 1:
             # mask needed for portability
             colors[block] = zlib.crc32(block)%0xFFFFFFFF 
