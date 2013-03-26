@@ -18,7 +18,6 @@ Author: Timothy D. Morgan, Jason A. Donenfeld
 '''
 
 import sys
-import string
 import base64
 import binascii
 import fractions
@@ -190,7 +189,7 @@ class base64Encoding(DataEncoding):
             blob = blob+(self.pad*padlen)
 
         if not self.dialect.startswith('rfc3548'):
-            table = string.maketrans(self.c62+self.c63+self.pad, b'+/=')
+            table = bytes.maketrans(self.c62+self.c63+self.pad, b'+/=')
             blob = blob.translate(table)
 
         return base64.standard_b64decode(blob)
@@ -200,7 +199,7 @@ class base64Encoding(DataEncoding):
         ret_val = base64.standard_b64encode(blob)
 
         if not self.dialect.startswith('rfc3548'):
-            table = string.maketrans(b'+/=', self.c62+self.c63+self.pad)
+            table = bytes.maketrans(b'+/=', self.c62+self.c63+self.pad)
             ret_val = ret_val.translate(table)
 
         if ret_val != None and self.dialect.endswith('nopad'):
