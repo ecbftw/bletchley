@@ -103,13 +103,13 @@ def splitBuffer(buf, block_size):
 	'''
 	Splits a buffer into evenly sized blocks.
 	'''
-	return [buf[i:i + block_size] for i in xrange(0, len(buf), block_size)]
+	return [buf[i:i + block_size] for i in range(0, len(buf), block_size)]
 
 def iterBuffer(buf, block_size):
 	'''
 	Iterates through a buffer in evenly sized blocks.
 	'''
-	return (buf[i:i + block_size] for i in xrange(0, len(buf), block_size))
+	return (buf[i:i + block_size] for i in range(0, len(buf), block_size))
 
 def pkcs7PadBuffer(buf, block_size):
 	'''
@@ -119,7 +119,7 @@ def pkcs7PadBuffer(buf, block_size):
 	return buf + pkcs7Pad(padding)
 
 def pkcs7Pad(length):
-	return chr(length) * length
+	return bytes([length]*length)
 
 def stripPKCS7Pad(decrypted, block_size=16, log_file=None):
     '''

