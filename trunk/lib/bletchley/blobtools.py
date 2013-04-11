@@ -35,14 +35,14 @@ def _percentEncode(binary, plus=False, upper=True):
     if upper:
         fmt = "%%%.2x"
 
-    ret_val = b''
+    ret_val = bytearray(b'')
     for c in binary:
         if c not in b'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789':
-            ret_val += (fmt % c).encode('ascii')
+            ret_val.extend((fmt % c).encode('ascii'))
         elif plus and (c == 20):
-            ret_val += b'+'
+            ret_val.extend(b'+')
         else:
-            ret_val += c
+            ret_val.append(c)
     
     return ret_val
 
