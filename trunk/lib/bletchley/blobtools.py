@@ -20,6 +20,7 @@ Author: Timothy D. Morgan, Jason A. Donenfeld
 import sys
 import base64
 import binascii
+import traceback
 import fractions
 import operator
 import functools
@@ -47,22 +48,21 @@ def _percentEncode(binary, plus=False, upper=True):
 
 
 def _percentDecode(binary, plus=False):
-    ret_val = b''
     if plus:
         binary = binary.replace(b'+', b' ')
     if binary == b'':
         return b''
     chunks = binary.split(b'%')
-    if binary[0] == 0x25:
-        chunks = chunks[1:]
 
-    for chunk in chunks:
+    ret_val = chunks[0]
+    for chunk in chunks[1:]:
         if len(chunk) < 2:
             return None
         try:
             ret_val += bytes([int(chunk[0:2], 16)]) + chunk[2:]
         except:
-            print(repr(chunk))
+            #traceback.print_exc()
+            #print(repr(chunk), repr(binary))
             return None
             
     return ret_val
