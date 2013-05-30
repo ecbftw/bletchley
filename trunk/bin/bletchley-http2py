@@ -35,6 +35,8 @@ Author: Timothy D. Morgan
 import sys
 import argparse
 
+bopen = lambda f: open(f, 'rb')
+
 parser = argparse.ArgumentParser(
     description='A script which accepts an HTTP request and prints out a'
     ' generated Python script which sends a similar request.  This is useful'
@@ -42,7 +44,7 @@ parser = argparse.ArgumentParser(
     ' particular page or application.'
     ' For more information, see: http://code.google.com/p/bletchley/wiki/Overview')
 parser.add_argument(
-    'requestfile', type=open, nargs='?', default=sys.stdin, 
+    'requestfile', type=bopen, nargs='?', default=sys.stdin.buffer, 
     help='A file containing an HTTP request.  Defaults to stdin if omitted.')
 parser.add_argument(
     '--requests', action='store_true', help='Generate a script that uses the'
@@ -52,13 +54,15 @@ args = parser.parse_args()
 input_req = args.requestfile.read()
 
 
-if '\r\n\r\n' in input_req:
-    raw_headers,body = input_req.split('\r\n\r\n', 1)
-elif '\n\n' in input_req:
-    raw_headers,body = input_req.split('\n\n', 1)
+if b'\r\n\r\n' in input_req:
+    raw_headers,body = input_req.split(b'\r\n\r\n', 1)
+elif b'\n\n' in input_req:
+    raw_headers,body = input_req.split(b'\n\n', 1)
 else:
     raw_headers = input_req
-    body = ''
+    body = b''
+
+raw_headers = raw_headers.decode('utf-8')
 
 header_lines = raw_headers.split('\n')
 method,path,version = header_lines[0].split(' ', 2)
@@ -101,8 +105,8 @@ for l in header_lines[1:]:
             host = value
 
 
-formatted_body = '\n            '.join([repr(body[i:i+40].encode()) for i in range(0,len(body),40)])
-if formatted_body == '':
+formatted_body = '\n            '.join([repr(body[i:i+40]) for i in range(0,len(body),40)])
+if formatted_body == b'':
     formatted_body = "b''"
 
 
