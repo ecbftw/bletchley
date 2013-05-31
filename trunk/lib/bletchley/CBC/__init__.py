@@ -164,7 +164,7 @@ class POA:
             #     well tested.  An option should be added to allow other
             #     bytes to be used or to turn off the behavior.
             prior = bytearray(prior)
-            for q in range(-16,-1):
+            for q in range(0-self.block_size,-1):
                 prior[q] = prior[q]^(pad_length^32) # space
 
             if self._oracle(self._ciphertext+prior[:-1]+tweaked+final, self._iv):
