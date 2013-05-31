@@ -131,7 +131,7 @@ def stripPKCS7Pad(decrypted, block_size=16, log_file=None):
             log_file.write("Can't strip PKCS7 pad.  Plaintext not correct length\n")
         return None
 
-    length = ord(decrypted[-1])
+    length = decrypted[-1]
     if length > block_size:
         if log_file:
             log_file.write("Can't strip PKCS7 pad.  Final byte length (%d) too large.\n" % length)
