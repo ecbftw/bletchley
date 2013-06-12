@@ -2,7 +2,7 @@
 A collection of tools to assist in analyzing encrypted data 
 through chosen ciphertext attacks.
 
-Copyright (C) 2012 Virtual Security Research, LLC
+Copyright (C) 2012-2013 Virtual Security Research, LLC
 Author: Timothy D. Morgan
 
  This program is free software: you can redistribute it and/or modify
@@ -21,7 +21,7 @@ Author: Timothy D. Morgan
 import sys
 import threading
 import struct
-import Queue
+import queue
 
 def probe_bytes(checker, ciphertext, values, max_threads=1):
     '''For each offset in the ciphertext, XORs each of the values with
@@ -43,7 +43,7 @@ def probe_bytes(checker, ciphertext, values, max_threads=1):
         prefix = ciphertext[0:j]
         target = ciphertext[j]
         suffix = ciphertext[j+1:]
-        results = Queue.Queue()
+        results = queue.Queue()
         for i in range(0,num_threads):
             subset = [values[s] for s in range(i,len(values),num_threads)]
             t = threading.Thread(target=probe_worker, 
