@@ -98,6 +98,7 @@ for l in header_lines[1:]:
     if name.lower() == 'host':
         if ':' in value:
             host,port = value.split(':',1)
+            port = int(port, 10)
             if port == 443:
                 use_ssl = True
                 protocol = 'https'
@@ -106,7 +107,7 @@ for l in header_lines[1:]:
 
 
 formatted_body = '\n            '.join([repr(body[i:i+40]) for i in range(0,len(body),40)])
-if formatted_body == b'':
+if formatted_body == '':
     formatted_body = "b''"
 
 
