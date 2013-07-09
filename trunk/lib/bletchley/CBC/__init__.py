@@ -2,7 +2,7 @@
 Created on Jul 4, 2010
 
 Copyright (C) 2010 ELOI SANFÈLIX
-Copyright (C) 2012 Timothy D. Morgan
+Copyright (C) 2012-2013 Timothy D. Morgan
 @author: Eloi Sanfelix < eloi AT limited-entropy.com >
 @author: Timothy D. Morgan < tmorgan {a} vsecurity . com >
 
@@ -222,7 +222,8 @@ class POA:
             suffix[i] ^= prior[0-numKnownBytes+i]^known_bytes[i]^(numKnownBytes+1)
         suffix = struct.pack("B"*len(suffix),*suffix)+block
 
-
+        # XXX: catch any signal exceptions, such as ^C, and communicate
+        #      this back to the rest of the script so it can end immediately 
         for x in range(0, 1+self.retries):
             # Each thread spawned searches a subset of the next byte's 
             # 256 possible values
@@ -283,6 +284,7 @@ class POA:
             pad_bytes = self.probe_padding()
             if pad_bytes == None:
                 # XXX: custom exception
+                self.log_message("Could not determine pad length")
                 raise Exception
             
             self.decrypted = pad_bytes
@@ -313,7 +315,8 @@ class POA:
             partial = b''
                 
         # Finally decrypt first block
-        decrypted = self.decrypt_block(self._iv, blocks[0], partial) + decrypted
+        if finished_blocks < len(blocks):
+            decrypted = self.decrypt_block(self._iv, blocks[0], partial) + decrypted
         
         # Remove the padding and return
         return buffertools.stripPKCS7Pad(decrypted, self.block_size, self.log_fh)

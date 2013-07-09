@@ -12,6 +12,9 @@ Near Term
 Future
 ======
 
+* Generalize CBC-R methods to support any block decryption oracle
+  http://blog.spiderlabs.com/2013/06/cbc-r-its-not-just-for-padding-oracles.html
+
 * Codetective
   Consider using parts of this, if useful
   https://github.com/blackthorne/Codetective
