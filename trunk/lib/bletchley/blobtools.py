@@ -131,6 +131,10 @@ class base64Encoding(DataEncoding):
             self.c62 = b'+'
             self.c63 = b'/'
             self.pad = b'$'
+        elif dialect.startswith('url6'):
+            self.c62 = b'*'
+            self.c63 = b'/'
+            self.pad = b'='
         elif dialect.startswith('otkurl'):
             self.c62 = b'-'
             self.c63 = b'_'
@@ -359,6 +363,8 @@ priorities = [
     (base64Encoding, 'url4-nopad', 261),
     (base64Encoding, 'url5', 265),
     (base64Encoding, 'url5-nopad', 266),
+    (base64Encoding, 'url6', 267),
+    (base64Encoding, 'url6-nopad', 268),
     (base64Encoding, 'xmlnmtoken', 270),
     (base64Encoding, 'xmlnmtoken-nopad', 271),
     (base64Encoding, 'xmlname', 280),
