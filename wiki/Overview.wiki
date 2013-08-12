@@ -113,8 +113,8 @@ The CBC module contains various tools for attacking CBC encrypted data.
 In particular, it contains the POA class which automates padding oracle
 attacks.  To use the POA class, one simply needs to implement a function
 in Python 3 which submits a request to an oracle and returns True if the
-padding check was successful and False otherwise.  See '`pydoc3
-bletchley.CBC.POA`' for more details.
+padding check was successful and False otherwise.  See 
+'`pydoc3 bletchley.CBC.POA`' for more details.
 
 
 = Support =
