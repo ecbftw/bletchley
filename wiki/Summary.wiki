@@ -1,0 +1,14 @@
+Cryptography is hard.  Most software developers realize this.  Security dogma of "don't invent your own crypto; use standard algorithms" has been a "best practice" for some time.  But what does this mean?  Use AES?  As cryptographers know, and history has shown, this alone is insufficient.  Using otherwise safe cryptographic primitives in custom protocols and message formats requires an understanding of cryptography that most programmers lack.  As a result, many implementations are sorely insecure due to the way cryptographic primitives are combined and applied in real world contexts.
+
+As a software penetration tester, your job is to identify security flaws in custom software.  However, when black-box testing an application that misuses cryptographic primitives, how do you identify and exploit these issues efficiently?  The task is fraught with engineering difficulties which frustrate the process and cause you to expend valuable testing time on trivial matters that are specific to the implementation.  Bletchley was created to assist with the detection, analysis, and exploitation of cryptographic flaws and aims to help automate the tedious aspects of this analysis while leaving the security expert in control of the process.
+
+Bletchley is currently in the early stages of development and consists of tools which provide:
+- Automated token encoding detection (36 encoding variants)
+- Passive ciphertext block length and repetition analysis
+- Script generator for efficient automation of HTTP requests
+- A flexible, multithreaded padding oracle attack library with CBC-R support
+
+As the framework matures, the following additional features are currently anticipated:
+- Passive binary structure detection
+- Automated chosen ciphertext probes
+- Tools to analyze and exploit other flaws, such as asymmetric algorithm and hash misuse
