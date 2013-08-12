@@ -12,3 +12,7 @@ As the framework matures, the following additional features are currently antici
 - Passive binary structure detection
 - Automated chosen ciphertext probes
 - Tools to analyze and exploit other flaws, such as asymmetric algorithm and hash misuse
+
+
+For more information on the specific tools, see the <a href="http://code.google.com/p/bletchley/wiki/Overview">documentation</a>.  Bletchley is maintained by 
+<a href="http://vsecurity.com/">VSR</a>, though code/testing contributions are greatly appreciated.

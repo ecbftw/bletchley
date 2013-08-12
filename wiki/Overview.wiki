@@ -1,8 +1,4 @@
-Bletchley provides a variety of tools that make black box
-cryptanalysis easier by taking care of some of the more tedious
-engineering challenges. Bletchley is maintained by <a href="http://vsecurity.com/">VSR</a>.
-Bletchley is currently in the early stages of development, which means
-documentation may be lacking.  Contributions are welcome.
+Here you will find a brief overview of the tools and libraries provided by Bletchley.  For further details, see the individual tool usage statements, pydoc documentation, and of course the <a href="http://code.google.com/p/bletchley/source/browse/trunk/">source code</a>.
 
 *Contents*
 <wiki:toc max_depth="2" />
@@ -55,7 +51,7 @@ meU8SyxVHE1lktsbYI4hIg%3D%3D
 These tokens were then fed to `bletchley-analyze`:
 <img src="http://bletchley.googlecode.com/svn/wiki/images/bletchley-analyze.png" />
 
-1. <i>Bletchley's blobtools module currently supports 33 encoding variants,
+1. <i>Bletchley's blobtools module currently supports 36 encoding variants,
 including various forms of hexadecimal, base32, base64, and percent
 encodings. Try '`-e ?`' to list them.</i>
 
@@ -97,14 +93,28 @@ For more information, see the usage statement.
 
 = Libraries =
 
-Hint: start with '`pydoc bletchley`'?
-TODO
+Start with '`pydoc3 bletchley`'.  The following provides a brief overview of what each module is for.
+
 
 == blobtools ==
-TODO
+This module contains the code which handles base analysis of encrypted
+token encodings.  It can be used to automatically detect the most likely
+encoding variant ("dialect") as well as to quickly encode or decode data
+which is wrapped in multiple levels of encodings.
+
+
+== buffertools ==
+This module contains a collection of tools mean to help one manipulate
+binary buffers of ciphertext.
+
 
 == CBC ==
-TODO
+The CBC module contains various tools for attacking CBC encrypted data.
+In particular, it contains the POA class which automates padding oracle
+attacks.  To use the POA class, one simply needs to implement a function
+in Python 3 which submits a request to an oracle and returns True if the
+padding check was successful and False otherwise.  See '`pydoc3
+bletchley.CBC.POA`' for more details.
 
 
 = Support =
