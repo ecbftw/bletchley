@@ -196,7 +196,7 @@ class POA:
                 break
 
 
-    def decrypt_next_byte(self, prior, block, known_bytes):
+    def decrypt_next_byte(self, prior, block, known_bytes, cache=True):
         """Decrypts one byte of ciphertext by modifying the prior
         ciphertext block at the same relative offset.
 
@@ -256,18 +256,19 @@ class POA:
             raise Exception #XXX: custom exception
         
         decrypted = struct.pack("B",self._thread_result^base^(numKnownBytes+1))
-        self.decrypted = decrypted + self.decrypted
+        if cache:
+            self.decrypted = decrypted + self.decrypted
         #  Return previous bytes together with current byte
         return decrypted+known_bytes 
     
 
-    def decrypt_block(self, prior, block, last_bytes=b''):
+    def decrypt_block(self, prior, block, last_bytes=b'', cache=True):
         """Decrypts the block of ciphertext provided as a parameter.
 
         """
 
         while(len(last_bytes)!=self.block_size):
-            last_bytes = self.decrypt_next_byte(prior, block, last_bytes)
+            last_bytes = self.decrypt_next_byte(prior, block, last_bytes, cache)
 
         self.log_message("Decrypted block: %s" % repr(last_bytes))
         return last_bytes
@@ -335,12 +336,13 @@ class POA:
         if len(plaintext) != self.block_size or len(plaintext) != len(ciphertext):
             raise InvalidBlockError(self.block_size,len(plaintext))
 
-        ptext = self.decrypt_block(b'\x00'*self.block_size, ciphertext)
+        ptext = self.decrypt_block(b'\x00'*self.block_size, ciphertext, cache=False)
         prior = buffertools.xorBuffers(ptext, plaintext)
+        self.log_message("Encrypted block: %s to %s with prior %s" % (repr(plaintext), repr(ciphertext), repr(prior)))
         return prior,ciphertext
     
     
-    def encrypt(self,plaintext):
+    def encrypt(self,plaintext, ciphertext=None):
         """Encrypts a plaintext value through "CBC-R" style prior-block
         propagation.
         
@@ -354,11 +356,17 @@ class POA:
         this might be ok.
 
         """
-
+        
         blocks = buffertools.splitBuffer(buffertools.pkcs7PadBuffer(plaintext, self.block_size), 
                                          self.block_size)
-
-        if (len(self.decrypted) >= self.block_size
+        if ciphertext != None:
+            if len(ciphertext) % self.block_size != 0:
+                raise InvalidBlockError(self.block_size,len(ciphertext))
+            num_cblocks = (len(ciphertext) // self.block_size) - 1
+            del blocks[0-num_cblocks:] # we've already encrypted these
+            prior = ciphertext[0:self.block_size]
+            
+        elif (len(self.decrypted) >= self.block_size
             and len(self._ciphertext) >= 2*self.block_size):
             # If possible, reuse work from prior decryption efforts on original
             # message for last block
@@ -367,16 +375,20 @@ class POA:
             prior = buffertools.xorBuffers(old_prior,
                                            buffertools.xorBuffers(final_plaintext, blocks[-1]))
             ciphertext = self._ciphertext[0-self.block_size:]
+            del blocks[-1]
         else:
             # Otherwise, select a random last block and generate the prior block
-            ciphertext = struct.pack("B"*self.block_size, 
+            prior = struct.pack("B"*self.block_size, 
                                      *[random.getrandbits(8) for i in range(self.block_size)])
-            prior,ciphertext = self.encrypt_block(blocks[-1], ciphertext)
+            ciphertext = b''
 
-        # Continue generating all prior blocks
-        for i in range(len(blocks)-2, -1, -1):
-            prior,cblock = self.encrypt_block(blocks[i],prior)
-            ciphertext = cblock+ciphertext
-        
+        try:
+            # Continue generating all prior blocks
+            for i in range(len(blocks)-1, -1, -1):
+                prior,cblock = self.encrypt_block(blocks[i],prior)
+                ciphertext = cblock+ciphertext
+        except Exception as e:
+            self.log_message("Encryption failure. prior+ciphertext: %s" % repr(prior+ciphertext))
+
         # prior as IV
         return prior,ciphertext
