@@ -1,0 +1,147 @@
+#!/usr/bin/env python3
+
+# Requires Python 3+
+
+'''
+Simple script to leverage some of the blobtools features
+
+Copyright (C) 2011-2012 Virtual Security Research, LLC
+Author: Timothy D. Morgan
+
+ This program is free software: you can redistribute it and/or modify
+ it under the terms of the GNU Lesser General Public License, version 3,
+ as published by the Free Software Foundation.
+
+ This program is distributed in the hope that it will be useful,
+ but WITHOUT ANY WARRANTY; without even the implied warranty of
+ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ GNU General Public License for more details.
+
+ You should have received a copy of the GNU General Public License
+ along with this program.  If not, see <http://www.gnu.org/licenses/>.
+'''
+
+
+import sys
+import argparse
+import binascii
+from bletchley import blobtools,buffertools
+
+
+parser = argparse.ArgumentParser(
+    description='Analyzes samples of encrypted data in an attempt to decode'
+    ' samples to binary and identify patterns useful in cryptanalysis.'
+    ' For more information, see:  http://code.google.com/p/bletchley/wiki/Overview')
+parser.add_argument('input_file', nargs='?', default=None,
+                    help='File containing encrypted blobs to analyze, one per'
+                    ' line. Omit to read from stdin.')
+parser.add_argument('-e', dest='encoding_chain', type=str, default=None,
+                    help='Comma-separated sequence of formats used to encode'
+                    ' the tokens, beginning with the last one applied. '
+                    '(default: auto-detect. Use "?" for a listing of supported encodings.)')
+parser.add_argument('-b', dest='block_size', type=int, default=8,
+                    help='The block size displayed and used in highlighting (default: 8)')
+parser.add_argument('-p', dest='output_lines', type=int, default=10,
+                    help='Number of lines of input to display in decoded form.')
+parser.add_argument('-c', action='store_const', const=True, default=False,
+                    help='Use color output for decoded highlights.')
+parser.add_argument('-c256', action='store_const', const=True, default=False,
+                    help='Use 256 color output for decoded highlights.')
+options = parser.parse_args()
+
+if options.encoding_chain == '?':
+    print('\n\t'.join(['Supported encodings:']+blobtools.supportedEncodings()))
+    sys.exit(0)
+
+input_file = sys.stdin.buffer
+if options.input_file is not None:
+    input_file = open(options.input_file, 'rb')
+
+blobs = input_file.read().rstrip(b'\n').replace(b'\r', b'').split(b'\n')
+#print(repr(blobs))
+
+def terminalHighlightedString(code, s):
+    global options
+    if code == None:
+        return s
+
+    if options.c256:
+        fg = code%216+16
+        bg = (code^0xffffffff)%216+16
+        return "\x1b[0;38;05;%d;48;05;%dm%s\x1b[0m" % (fg,bg,s)
+    elif options.c:
+        fg = code%6+31
+        bg = (code^0xffffffff)%6+41
+        return "\x1b[0;%d;%dm%s\x1b[0m" % (fg,bg,s)
+    else:
+        return "\x1b[7m%s\x1b[0m" % s
+
+
+def printColoredHexDump(blobs, group_size=8):    
+    line_size = 64
+    group_size *= 2 # two hex digits per byte
+    hex_blobs = [binascii.b2a_hex(b) for b in blobs]
+    color_map = buffertools.blockWiseColorMap(group_size, hex_blobs)
+
+    for k in range(0,len(hex_blobs)):
+        hex = hex_blobs[k].decode()
+        
+        for i in range(0,len(hex),line_size):
+            line = '%.4X: ' % i
+
+            if len(hex[i:]) < line_size:
+                hex += (line_size-len(hex[i:]))*' '
+
+            for j in range(0,line_size,group_size):
+                group = hex[i+j:i+j+group_size]
+                line += terminalHighlightedString(color_map.get(group.encode('utf-8'),
+                                                                None), group) + ' ' 
+       
+            line += '| '
+            line += repr(blobs[k][i//2:(i+line_size)//2])
+        
+            print(line)
+        print('')
+
+
+
+def analyze(blobs):
+    lengths = blobtools.getLengths(blobs)
+    print('Unique Lengths: ' + ','.join(map(str, lengths)))
+
+    max_block_size = blobtools.maxBlockSize(lengths)
+    print('Maximum Possible Block Size: %d' % max_block_size)
+
+    block_sizes = blobtools.checkCommonBlocksizes(lengths)
+    print('Matching Common Block Sizes: %s' % ','.join(map(str, block_sizes)))
+
+    encodings = blobtools.encodingIntersection(blobs)
+    print('Possible Encodings: ' + ','.join(encodings))
+
+    encoding = blobtools.bestEncoding(encodings)
+    print('Best Encoding: %s' % encoding)
+
+    return encoding,block_sizes
+
+specified_encodings = []
+if options.encoding_chain != None:
+    specified_encodings = options.encoding_chain.split(',')
+
+encoding_chain = []
+encoding = 'dummy'
+while encoding != None:
+    print('='*80)
+    print('Beginning analysis after decoding by chain: %s' % ','.join(encoding_chain))
+    encoding,block_sizes = analyze(blobs)
+    if len(specified_encodings) > 0:
+        encoding = specified_encodings.pop(0)
+
+    blobs_to_print = blobs[:options.output_lines]
+    print('First %d Values:' % len(blobs_to_print))
+
+    printColoredHexDump(blobs_to_print, options.block_size)
+
+    if encoding != None:
+        encoding_chain.append(encoding)
+        blobs = blobtools.decodeAll(encoding, blobs)
+

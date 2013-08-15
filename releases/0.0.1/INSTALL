@@ -1,0 +1,29 @@
+Bletchley Installation Guide
+============================
+
+Bletchley is developed under Debian, but is likely to work on most
+modern Linux distributions, *BSD and MacOS.  Windows is not yet
+supported, but may be in the future.
+
+
+Dependencies
+------------
+* Python 3.x
+* scons (available as a package in most Linux distributions)
+* gcc
+* Optional: python "requests" library (python3-requests under Debian)
+
+
+Installing
+----------
+Build with:
+ $ scons
+
+And as root, install with:
+ # scons install
+
+
+Support
+-------
+Having trouble?  Submit an issue here: 
+  http://code.google.com/p/bletchley/issues/list

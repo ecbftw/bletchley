@@ -1,0 +1,40 @@
+Near Term
+=========
+
+* Ciphertext block brute-force classes
+
+* A stream ciphertext probe tool to build a map of different error messages
+
+* A tool that behaves like http2py, but generates a POA script
+
+
+
+Future
+======
+
+* Generalize CBC-R methods to support any block decryption oracle
+  http://blog.spiderlabs.com/2013/06/cbc-r-its-not-just-for-padding-oracles.html
+
+* Codetective
+  Consider using parts of this, if useful
+  https://github.com/blackthorne/Codetective
+
+* nextrand
+  - Expand capabilities to handle nextInt calls with arguments
+  - Transition code to a library that could be called by Python
+
+* Consider using an SMT solver for certain problems (linear PRNGs?)
+  http://en.wikipedia.org/wiki/Satisfiability_Modulo_Theories
+
+* Add tools for testing and conducting hash length-extension attacks.
+  One tool: https://github.com/bwall/HashPump
+
+* Add tool to test for LCG without knowing LCG parameters
+  See: Inferring Sequences Produced by Pseudo-Random Number Generators by JOAN BOYAR
+
+* Add Mersenne Twister attack tool
+  See: http://seclists.org/fulldisclosure/2012/Oct/190
+
+* Add tools for helping one determine the character set used by
+  randomly generated passwords, as well as determining the mapping
+  from numbers to characters

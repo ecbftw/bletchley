@@ -1,0 +1,54 @@
+#!/usr/bin/env python3
+
+# Requires Python 3+
+
+'''
+Simple decoder script; useful in shell scripts
+
+Copyright (C) 2011-2012 Virtual Security Research, LLC
+Author: Timothy D. Morgan
+
+ This program is free software: you can redistribute it and/or modify
+ it under the terms of the GNU Lesser General Public License, version 3,
+ as published by the Free Software Foundation.
+
+ This program is distributed in the hope that it will be useful,
+ but WITHOUT ANY WARRANTY; without even the implied warranty of
+ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ GNU General Public License for more details.
+
+ You should have received a copy of the GNU General Public License
+ along with this program.  If not, see <http://www.gnu.org/licenses/>.
+'''
+
+
+import sys
+import argparse
+from bletchley import blobtools
+
+
+parser = argparse.ArgumentParser(
+    description='A simple decoder script that is useful in shell scripts.'
+    ' For more information, see:  http://code.google.com/p/bletchley/wiki/Overview')
+parser.add_argument(
+    'input_file', nargs='?', default=None,
+    help='File containing encrypted blobs to analyze, one per line.'
+    ' Omit to read from stdin.')
+parser.add_argument(
+    '-e', dest='encoding_chain', type=str, required=True,
+    help='Comma-separated sequence of encoding formats used to encode the token.'
+    ' (Use "?" for a listing of supported encodings.)')
+options = parser.parse_args()
+
+if options.encoding_chain == '?':
+    print('\n\t'.join(['Supported encodings:']+blobtools.supportedEncodings()))
+    sys.exit(0)
+
+input_file = sys.stdin.buffer
+if options.input_file is not None:
+    input_file = open(options.input_file, 'rb')
+
+blob = input_file.read().rstrip(b'\r\n')
+
+specified_encodings = options.encoding_chain.split(',')
+sys.stdout.buffer.write(blobtools.decodeChain(specified_encodings, blob))
