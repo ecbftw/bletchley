@@ -122,6 +122,9 @@ except:
     sys.stderr.write('       Under Debian, the package name is "python3-requests"\\n.')
     sys.exit(1)
 
+# from bletchley import blobtools,buffertools
+# from bletchley.CBC import *
+
 
 # TODO: ensure the host, port, and SSL settings are correct.
 host = %s
@@ -175,6 +178,8 @@ else:
 
 import sys
 import http.client as httpc
+# from bletchley import blobtools,buffertools
+# from bletchley.CBC import *
 
 
 # TODO: ensure the host, port, and SSL settings are correct.
@@ -217,7 +222,7 @@ def newConnection():
 
 
 def fetch(data):
-    ret_val = None
+    ret_val = False
     connection = newConnection()
 
     # TODO: customize code here to retrieve what you need from the response(s)
@@ -232,4 +237,13 @@ def fetch(data):
 
 data = ''
 fetch(data)
+''')
+
+print('''
+
+# Padding Oracle Attacks 
+# ciphertext = blobtools.decode('{ encoding }', data)
+# poa = POA(fetch, {block size}, ciphertext, threads=1, log_file=sys.stderr)
+# print(poa.probe_padding()) # sanity check
+# print(poa.decrypt())
 ''')
