@@ -119,7 +119,8 @@ padding check was successful and False otherwise.  See
 
 = Support =
 
-Having trouble?  Submit an issue <a href="https://code.google.com/p/bletchley/issues/list">here</a>.
+Having trouble?  Submit an issue <a href="https://code.google.com/p/bletchley/issues/list">here</a>, or 
+ask on the <a href="https://groups.google.com/d/forum/bletchley-devel">email list</a>.
 
 
 = Contributing =
