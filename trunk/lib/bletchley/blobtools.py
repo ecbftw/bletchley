@@ -24,7 +24,6 @@ import traceback
 import fractions
 import operator
 import functools
-import itertools
 from . import buffertools
 
 
@@ -478,52 +477,3 @@ def int2binary(x, bits=8):
         Count is number of bits
         """
         return "".join(map(lambda y:str((x>>y)&1), range(bits-1, -1, -1)))
-
-
-#XXX: move this to buffertools
-def smartPermutateBlobs(blobs, block_size=8):
-    """
-    Intelligently permutates through blocks in blobs.
-    If the same blob shows up in the same place for
-    every blob, the resultant permutations will have
-    this property as well.
-    blobs should be an array containing blobs
-    block_size should be an integer block_size or an
-    array of block sizes.
-    """
-
-    if len(blobs) == 0:
-        return
-
-    if not isinstance(block_size, (int, long)):
-        for size in block_size:
-             for blob in smartPermutateBlobs(blobs, size):
-                 yield blob
-        return
-
-    # First we find the indexes of the chunks that are different
-    different = set()
-    for combo in itertools.combinations(blobs, 2):
-        different |= set(buffertools.blockWiseDiff(block_size, combo[0], combo[1]))
-    
-    # Next we form a set containing the chunks that are different
-    different_chunks = []
-    for blob in blobs:
-        different_chunks.extend([blob[i * block_size:(i + 1) * block_size] for i in different])
-    # Remove duplicates
-    different_chunks = set(different_chunks)
-    
-    # We want to know which chunks are the same, too
-    chunk_len = len(blobs[0]) / block_size
-    same = set(range(0, chunk_len)) - different
-
-    # Now let's mix and match the differnet blocks, for all possible lengths
-    for i in range(1, chunk_len + 1):
-        for mix in itertools.permutations(different_chunks, i):
-            # We add back in the part that stays the same
-            for j in same:
-                mix.insert(j, blobs[0][j * block_size:(j + 1) * block_size])
-            mix = "".join(mix)
-            if mix in blobs:
-                continue
-            yield mix 
