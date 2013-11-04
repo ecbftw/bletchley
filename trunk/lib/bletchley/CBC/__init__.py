@@ -65,8 +65,8 @@ class POA:
          results in a correct padding upon decryption and False
          otherwise.  This function should implement the prototype:
            def myOracle(ciphertext, iv): ...
-         If the initialization vector (iv) is unknown is not included in
-         the ciphertext message, it can be ignored in the oracle
+         If the initialization vector (iv) is unknown or not included in
+         the ciphertext message, it can be ignored in your oracle
          implementation (though some limitations will result from this).
 
         block_size -- The block size of the ciphertext being attacked.

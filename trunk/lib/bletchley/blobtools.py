@@ -1,7 +1,7 @@
 '''
 A collection of tools to assist in analyzing encrypted blobs of data
 
-Copyright (C) 2011-2012 Virtual Security Research, LLC
+Copyright (C) 2011-2013 Virtual Security Research, LLC
 Author: Timothy D. Morgan, Jason A. Donenfeld
 
  This program is free software: you can redistribute it and/or modify
@@ -164,7 +164,16 @@ class base64Encoding(DataEncoding):
         for c in self.extraneous_chars:
             blob = blob.replace(bytes([c]), b'')
 
-        nopad = blob.rstrip(self.pad)
+        if self.dialect.endswith('intpad'):
+            if blob[-1] not in b'012':
+                return False
+            nopad = blob[:-1]
+            padlen = blob[-1] - 48 # see the ascii table
+        else:
+            nopad = blob.rstrip(self.pad)
+            padlen = len(blob) - len(nopad)
+
+        # what the pad length ought to be
         padlen_guess = self._guessPadLength(len(nopad))
         if padlen_guess == None:
             return False
@@ -175,11 +184,20 @@ class base64Encoding(DataEncoding):
 
         # pad must not appear in the middle of the 
         # string and must be the correct length at the end
-        return (self.pad not in nopad) and (len(blob) == len(nopad)+padlen_guess)
+        return (self.pad not in nopad) and (padlen == padlen_guess)
 
     def decode(self, blob):
         for c in self.extraneous_chars:
             blob = blob.replace(bytes(c), b'')
+
+        if self.dialect.endswith('intpad'):
+            padlen = blob[-1] - 48 # see the ascii table
+            padlen_guess = self._guessPadLength(len(blob[:-1]))
+            if padlen != padlen_guess:
+                raise Exception("Invalid length for int-padded base64 string. (%d != %d)" 
+                                % (padlen, padlen_guess))
+
+            blob = blob[:-1] + (self.pad*padlen)
 
         if self.dialect.endswith('nopad'):
             if self.pad in blob:
@@ -207,6 +225,10 @@ class base64Encoding(DataEncoding):
 
         if ret_val != None and self.dialect.endswith('nopad'):
             ret_val = ret_val.rstrip(self.pad)
+
+        if ret_val != None and self.dialect.endswith('intpad'):
+            stripped = ret_val.rstrip(self.pad) 
+            ret_val = stripped + ("%d" % (len(ret_val) - len(stripped))).encode('utf-8')
 
         return ret_val
 
@@ -336,7 +358,8 @@ class percentEncoding(DataEncoding):
 
         return _percentEncode(blob, plus=plus, upper=upper)
 
-
+# XXX: need a better way to organize these with the possible combinations of dialects, padding, etc
+#      for instance, can we have rfc3548-newline-nopad ?
 priorities = [
     (hexEncoding, 'upper', 100),
     (hexEncoding, 'lower', 101),
@@ -348,26 +371,37 @@ priorities = [
     (base64Encoding, 'rfc3548', 200),
     (base64Encoding, 'rfc3548-nopad', 201),
     (base64Encoding, 'rfc3548-newline', 202),
+    (base64Encoding, 'rfc3548-intpad', 203),
     (base64Encoding, 'filename', 210),
     (base64Encoding, 'filename-nopad', 211),
+    (base64Encoding, 'filename-intpad', 212),
     (base64Encoding, 'url1', 230),
     (base64Encoding, 'url1-nopad', 231),
+    (base64Encoding, 'url1-intpad', 232),
     (base64Encoding, 'otkurl', 235),
     (base64Encoding, 'otkurl-nopad', 236),
+    (base64Encoding, 'otkurl-intpad', 237),
     (base64Encoding, 'url2', 240),
     (base64Encoding, 'url2-nopad', 241),
+    (base64Encoding, 'url2-intpad', 242),
     (base64Encoding, 'url3', 250),
     (base64Encoding, 'url3-nopad', 251),
+    (base64Encoding, 'url3-intpad', 252),
     (base64Encoding, 'url4', 260),
     (base64Encoding, 'url4-nopad', 261),
+    (base64Encoding, 'url4-intpad', 262),
     (base64Encoding, 'url5', 265),
     (base64Encoding, 'url5-nopad', 266),
+    (base64Encoding, 'url5-intpad', 267),
     (base64Encoding, 'url6', 267),
     (base64Encoding, 'url6-nopad', 268),
+    (base64Encoding, 'url6-intpad', 269),
     (base64Encoding, 'xmlnmtoken', 270),
     (base64Encoding, 'xmlnmtoken-nopad', 271),
+    (base64Encoding, 'xmlnmtoken-intpad', 272),
     (base64Encoding, 'xmlname', 280),
     (base64Encoding, 'xmlname-nopad', 281),
+    (base64Encoding, 'xmlname-intpad', 282),
     (percentEncoding, 'upper-plus', 400),
     (percentEncoding, 'upper', 401),
     (percentEncoding, 'lower-plus', 410),
