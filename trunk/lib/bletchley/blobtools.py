@@ -416,6 +416,7 @@ for enc,d,p in priorities:
     e.priority = p
     encodings["%s/%s" % (enc.name, d)] = e
 
+
 def supportedEncodings():
     e = list(encodings.keys())
     e.sort()
@@ -455,26 +456,96 @@ def bestEncoding(encs):
 
 
 def decode(encoding, blob):
+    """Given an encoding name and a blob, decodes the blob and returns it.
+
+    encoding -- A string representation of the encoding and dialect.
+                For a list of valid encoding names, run: 
+                  bletchley-analyze -e ?
+
+    blob     -- A bytes or bytearray object to be decoded.  If a string
+                is provided instead, it will be converted to a bytes
+                object using 'utf-8'.
+
+    Returns a bytes object containing the decoded representation of
+    blob.  Will throw various types of exceptions if a problem is
+    encountered.
+    """
+    if isinstance(blob, str):
+        blob = blob.encode('utf-8')
     return encodings[encoding].decode(blob)
 
 def encode(encoding, blob):
+    """Given an encoding name and a blob, encodes the blob and returns it.
+
+    encoding -- A string representation of the encoding and dialect.
+                For a list of valid encoding names, run: 
+                  bletchley-analyze -e ?
+
+    blob     -- A bytes or bytearray object to be encoded.
+
+    Returns a bytes object containing the encoded representation of
+    blob.  Will throw various types of exceptions if a problem is
+    encountered."""
     return encodings[encoding].encode(blob)
+
 
 def decodeAll(encoding, blobs):
     return [encodings[encoding].decode(b) for b in blobs]
 
+
 def encodeAll(encoding, blobs):
     return [encodings[encoding].encode(b) for b in blobs]
 
+
 def decodeChain(decoding_chain, blob):
+    """Given a sequence of encoding names (decoding_chain) and a blob,
+    decodes the blob once for each element of the decoding_chain. For
+    instance, if the decoding_chain were 
+      ['percent/lower', 'base64/rfc3548']
+    then blob would first be decoded as 'percent/lower', followed by
+    'base64/rfc3548'.
+
+    decoding_chain -- A sequence (list,tuple,...) of string
+                      representations of the encoding and dialect. For a
+                      list of valid encoding names, run:  
+                         bletchley-analyze -e ?
+
+    blob     -- A bytes or bytearray object to be decoded.  If a string
+                is provided instead, it will be converted to a bytes
+                object using 'utf-8'.
+
+    Returns a bytes object containing the decoded representation of
+    blob.  Will throw various types of exceptions if a problem is
+    encountered.
+    """
     for decoding in decoding_chain:
         blob = decode(decoding, blob)
     return blob
 
+
 def encodeChain(encoding_chain, blob):
+    """Given a sequence of encoding names (encoding_chain) and a blob,
+    encodes the blob once for each element of the encoding_chain. For
+    instance, if the encoding_chain were 
+      ['base64/rfc3548', 'percent/lower',]
+    then blob would first be encoded as 'base64/rfc3548', followed by
+    'percent/lower'.
+
+    encoding_chain -- A sequence (list,tuple,...) of string
+                      representations of the encoding and dialect. For a
+                      list of valid encoding names, run:  
+                         bletchley-analyze -e ?
+
+    blob     -- A bytes or bytearray object to be encoded.
+
+    Returns a bytes object containing the encoded representation of
+    blob.  Will throw various types of exceptions if a problem is
+    encountered.
+    """    
     for encoding in encoding_chain:
         blob = encode(encoding, blob)
     return blob
+
 
 def getLengths(s):
     lengths = set()
