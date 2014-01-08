@@ -246,4 +246,9 @@ print('''
 # poa = POA(fetch, {block size}, ciphertext, threads=1, log_file=sys.stderr)
 # print(poa.probe_padding()) # sanity check
 # print(poa.decrypt())
+
+# Byte-by-byte probing of ciphertext
+# ciphertext = blobtools.decode('{ encoding }', data)
+# result = chosenct.probe_bytes(fetch, data, [1,2,4,8,16,32,64,128], max_threads=5)
+# print(result.toHTML())
 ''')
