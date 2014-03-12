@@ -247,6 +247,10 @@ class POA:
             if self._thread_result == None:
                 if x < self.retries:
                     self.log_message("Value of a byte could not be determined. Retrying...")
+                    # XXX: Instead of adding a new random block to the
+                    #      beginning every time, would be better to just keep
+                    #      randomizing the same block before the original
+                    #      prior_prefix.
                     prior_prefix = bytes([random.getrandbits(8) for i in range(self.block_size)]) + prior_prefix
             else:
                 break
