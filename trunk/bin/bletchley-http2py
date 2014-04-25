@@ -149,7 +149,7 @@ def sendRequest(session, data=None):
     url = "%%s://%%s:%%d%%s" %% (protocol,host,port,path)
     body = (%s)
 
-    return session.request(method, url, headers=headers, data=body)
+    return session.request(method, url, headers=headers, data=body, allow_redirects=False)
     ''' % (repr(method), repr(path), repr(headers), formatted_body))
 
     print('''    
