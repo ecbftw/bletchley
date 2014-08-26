@@ -74,6 +74,8 @@ td
         return
 
     def _generate_colors(self, s):
+        if isinstance(s, str):
+            s = s.encode('utf-8')
         base=bytes(hashlib.md5(s).digest()[0:6])
         color1 = "#%.2X%.2X%.2X" % tuple(base[:3])
         color2 = "#%.2X%.2X%.2X" % tuple(base[3:])
@@ -95,7 +97,8 @@ td
             for offset in range(0,self._ct_length):
                 message = self._raw_table[offset][v]
                 bg,fg = self._generate_colors(message)
-                message = message.decode('utf-8')
+                if not isinstance(message, str):
+                    message = message.decode('utf-8')
 
                 truncated = message[0:maxlen]
                 if len(message) > maxlen:

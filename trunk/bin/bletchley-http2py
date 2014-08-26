@@ -123,6 +123,7 @@ except:
     sys.exit(1)
 
 # from bletchley import blobtools,buffertools
+# from bletchley import chosenct
 # from bletchley.CBC import *
 
 
@@ -221,7 +222,7 @@ def newConnection():
         return httpc.HTTPConnection(host, port)
 
 
-def fetch(data):
+def fetch(data, other=None):
     ret_val = False
     connection = newConnection()
 
@@ -249,6 +250,6 @@ print('''
 
 # Byte-by-byte probing of ciphertext
 # ciphertext = blobtools.decode('{ encoding }', data)
-# result = chosenct.probe_bytes(fetch, data, [1,2,4,8,16,32,64,128], max_threads=5)
+# result = chosenct.probe_bytes(fetch, ciphertext, [1,2,4,8,16,32,64,128], max_threads=5)
 # print(result.toHTML())
 ''')
