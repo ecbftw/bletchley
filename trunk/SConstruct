@@ -56,7 +56,7 @@ install_items = [destdir + bindir]
 
 env.Install(destdir+bindir, [bletchley_nextrand, 'bin/bletchley-analyze', 
                              'bin/bletchley-http2py', 'bin/bletchley-encode', 
-                             'bin/bletchley-decode'])
+                             'bin/bletchley-decode', 'bin/bletchley-clonecertchain'])
 #libinstall = env.Install(destdir+libdir, [libbletchley, libbletchley_static])
 #env.Install(destdir+includedir+'/bletchley', Glob('include/*.h'))
 #env.Install(destdir+mandir+'/man1', [man_bletchley, man_bletchley_recover,
