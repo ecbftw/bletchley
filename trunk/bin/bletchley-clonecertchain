@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
-
+#-*- mode: Python;-*-
+#
 # Requires Python 3+
+
 
 '''
 An experimental script which attempts to clone a server certificate's entire 
@@ -187,16 +189,25 @@ def genFakeCertificateChain(cert_chain):
 parser = argparse.ArgumentParser(
     description="An experimental script which attempts to clone an SSL server's"
     " entire certificate chain, ideally altering only the keys and signatures"
-    " along the way.  The script prints results to stdout, starting with a PEM"
+    " along the way.  The script prints results to stdout, starting with a PKCS7 (PEM)"
     " key (the fake server private key) followed by the newly forged certificate"
     " chain, also in PEM format.  (The new intermediate and root private keys are"
-    " not currently printed, but will likely be somehow availble in a future"
+    " not currently printed, but will likely be somehow available in a future"
     " version.)")
 
 parser.add_argument('host', nargs=1, default=None,
                     help='IP address or host name of server')
-parser.add_argument('port', nargs='?', default=443,
+parser.add_argument('port', nargs='?', type=int, default=443,
                     help='TCP port number of SSL service (default: 443)')
+parser.add_argument(
+    '--p12', dest='p12_filename', type=str, required=False, default=None,
+    help='If specified, a PKCS12 file will be written with the generated certificates'
+    ' and server key (in addition to normal PKCS7 output).  NOTE: the file specified'
+    ' will be overwritten without prompting if it already exists.')
+parser.add_argument(
+    '--p12password', dest='p12_password', type=str, required=False, default='bletchley',
+    help='If specified along with the --p12 argument, the PKCS12 file will use this password'
+    ' to encrypt the server private key.  (Otherwise, the password "bletchley" is used).')
 options = parser.parse_args()
 
 #print("REAL CHAIN:")
@@ -213,3 +224,14 @@ fake_key, fake_chain = genFakeCertificateChain(chain)
 print(OpenSSL.crypto.dump_privatekey(OpenSSL.crypto.FILETYPE_PEM, fake_key).decode('utf-8'))
 for c in fake_chain:
     print(OpenSSL.crypto.dump_certificate(OpenSSL.crypto.FILETYPE_PEM, c).decode('utf-8'))
+
+if options.p12_filename:
+    p12_file = open(options.p12_filename, 'w+b')
+
+    p12 = OpenSSL.crypto.PKCS12()
+    p12.set_ca_certificates(fake_chain[1:])
+    p12.set_privatekey(fake_key)
+    p12.set_certificate(fake_chain[0])
+
+    p12_file.write(p12.export(passphrase=options.p12_password.encode('utf-8')))
+    p12_file.close()
