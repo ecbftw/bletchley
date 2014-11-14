@@ -63,14 +63,17 @@ def fetchCertificateChain(host, port):
     serverSock = socket.socket()
     serverSock.connect((host,port))
     
+    chain = None
     try:
         server = SSL.Connection(createClientContext(), serverSock)
         server.set_connect_state()
         server.do_handshake()
     except Exception as e:
-        print("Exception during handshake with server: ")
-        traceback.print_exc(e)
-        return None
+        sys.stderr.write("Exception during handshake with server: \n")
+        traceback.print_exc(file=sys.stderr)
+        sys.stderr.write("\nThis typically occurs when server rejects our "
+                         "connection due to lack of a client certificate or"
+                         " for similar reasons.\nAttempting to continue...\n\n")
         
     return server.get_peer_cert_chain()
 
@@ -220,6 +223,10 @@ chain = fetchCertificateChain(options.host[0],options.port)
 #    print(OpenSSL.crypto.dump_certificate(OpenSSL.crypto.FILETYPE_PEM, c).decode('utf-8'))
 
 #print("FAKE KEY AND CHAIN:")
+if not chain:
+    sys.stderr.write("ERROR: Could not retrieve server certificate\n\n")
+    sys.exit(2)
+
 fake_key, fake_chain = genFakeCertificateChain(chain)
 print(OpenSSL.crypto.dump_privatekey(OpenSSL.crypto.FILETYPE_PEM, fake_key).decode('utf-8'))
 for c in fake_chain:
