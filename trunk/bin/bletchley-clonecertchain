@@ -53,29 +53,38 @@ except:
     sys.exit(2)
 
 
-def createClientContext():
-    tlsClientContext = SSL.Context(SSL.SSLv3_METHOD)
+def createClientContext(method=SSL.SSLv3_METHOD):
+    tlsClientContext = SSL.Context(method)
     tlsClientContext.set_verify(SSL.VERIFY_NONE, (lambda a,b,c,d,e: True))
     return tlsClientContext
 
 
 def fetchCertificateChain(host, port):
-    serverSock = socket.socket()
-    serverSock.connect((host,port))
-    
+    protocols = [SSL.SSLv23_METHOD, SSL.TLSv1_METHOD, 
+                 SSL.TLSv1_1_METHOD, SSL.TLSv1_2_METHOD, 
+                 SSL.SSLv3_METHOD, SSL.SSLv2_METHOD]
+
     chain = None
-    try:
-        server = SSL.Connection(createClientContext(), serverSock)
-        server.set_connect_state()
-        server.do_handshake()
-    except Exception as e:
-        sys.stderr.write("Exception during handshake with server: \n")
-        traceback.print_exc(file=sys.stderr)
-        sys.stderr.write("\nThis typically occurs when server rejects our "
-                         "connection due to lack of a client certificate or"
-                         " for similar reasons.\nAttempting to continue...\n\n")
-        
-    return server.get_peer_cert_chain()
+    for p in protocols:
+        serverSock = socket.socket()
+        serverSock.connect((host,port))
+    
+        try:
+            server = SSL.Connection(createClientContext(p), serverSock)
+            server.set_connect_state()
+            server.do_handshake()
+        except Exception as e:
+            sys.stderr.write("Exception during handshake with server: \n")
+            traceback.print_exc(file=sys.stderr)
+            sys.stderr.write("\nThis could happen because the server requires "
+                             "certain SSL/TLS versions or a client certificiate."
+                             "  Have no fear, we'll keep trying...\n\n")
+
+        chain = server.get_peer_cert_chain()
+        if chain:
+            return chain
+
+    return chain
 
 
 def normalizeCertificateName(cert_name):
