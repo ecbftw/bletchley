@@ -2,7 +2,7 @@
 Created on Jul 4, 2010
 
 Copyright (C) 2010 ELOI SANFÈLIX
-Copyright (C) 2012-2013 Timothy D. Morgan
+Copyright (C) 2012-2015 Timothy D. Morgan
 @author: Eloi Sanfelix < eloi AT limited-entropy.com >
 @author: Timothy D. Morgan < tmorgan {a} vsecurity . com >
 
@@ -117,7 +117,7 @@ class POA:
 
     def log_message(self, s):
         if self.log_fh != None:
-            self.log_fh.write(s+'\n')
+            self.log_fh.write('BLETCHLEY: %s\n' % s)
 
 
     def probe_padding(self):
@@ -342,11 +342,13 @@ class POA:
 
         ptext = self.decrypt_block(b'\x00'*self.block_size, ciphertext, cache=False)
         prior = buffertools.xorBuffers(ptext, plaintext)
-        self.log_message("Encrypted block: %s to %s with prior %s" % (repr(plaintext), repr(ciphertext), repr(prior)))
+        self.log_message("Encrypted block: %s to %s with prior %s" % (repr(plaintext),
+                                                                      repr(bytes(ciphertext)),
+                                                                      repr(bytes(prior))))
         return prior,ciphertext
     
     
-    def encrypt(self,plaintext, ciphertext=None):
+    def encrypt(self, plaintext, ciphertext=None):
         """Encrypts a plaintext value through "CBC-R" style prior-block
         propagation.
         
@@ -363,15 +365,28 @@ class POA:
         
         blocks = buffertools.splitBuffer(buffertools.pkcs7PadBuffer(plaintext, self.block_size), 
                                          self.block_size)
-        if ciphertext != None:
+        if ciphertext not in (None, b''):
             if len(ciphertext) % self.block_size != 0:
                 raise InvalidBlockError(self.block_size,len(ciphertext))
-            num_cblocks = (len(ciphertext) // self.block_size) - 1
-            del blocks[0-num_cblocks:] # we've already encrypted these
-            prior = ciphertext[0:self.block_size]
+
+            cblocks = buffertools.splitBuffer(ciphertext, self.block_size)
+            prior = cblocks[0]
+
+            # remove first block from ciphertext since it'll be re-added later
+            # after the prior is converted to finished ciphertext.
+            del cblocks[0]
+            ciphertext = b''.join(cblocks)
+
+            # now remove the plaintext blocks we've already completed
+            num_finished = len(cblocks)
+            del blocks[len(blocks)-num_finished:]
+            self.log_message("Reusing previous decryption of final %d blocks" % num_finished)
             
         elif (len(self.decrypted) >= self.block_size
             and len(self._ciphertext) >= 2*self.block_size):
+            
+            self.log_message("Reusing previous decryption of final block")
+
             # If possible, reuse work from prior decryption efforts on original
             # message for last block
             old_prior = self._ciphertext[0-self.block_size*2:0-self.block_size]
@@ -381,11 +396,14 @@ class POA:
             ciphertext = self._ciphertext[0-self.block_size:]
             del blocks[-1]
         else:
+            self.log_message("Starting decryption from scratch with random final block")
+            
             # Otherwise, select a random last block and generate the prior block
             prior = struct.pack("B"*self.block_size, 
                                      *[random.getrandbits(8) for i in range(self.block_size)])
             ciphertext = b''
 
+        self.log_message("Encrypting %d blocks..." % len(blocks))
         try:
             # Continue generating all prior blocks
             for i in range(len(blocks)-1, -1, -1):
