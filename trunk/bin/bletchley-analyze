@@ -57,7 +57,7 @@ input_file = sys.stdin.buffer
 if options.input_file is not None:
     input_file = open(options.input_file, 'rb')
 
-blobs = input_file.read().rstrip(b'\n').replace(b'\r', b'').split(b'\n')
+blobs = [b for b in input_file.read().rstrip(b'\n').replace(b'\r', b'').split(b'\n') if len(b) > 0]
 #print(repr(blobs))
 
 def terminalHighlightedString(code, s):
