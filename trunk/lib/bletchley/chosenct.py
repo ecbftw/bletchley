@@ -23,16 +23,28 @@ import threading
 import struct
 import queue
 import hashlib
+import codecs
+
+
+def escape_handler(error):
+    ret_val = ''
+    for b in error.object[error.start:error.end]:
+        ret_val += "\\x%.2X" % b
+
+    return (ret_val,error.end)
+
+codecs.register_error('decode_escape',escape_handler)
+
 
 # Wish Python had a better function for this that escaped more characters
 _html_escape_table = {
-    "&": "&amp;",
-    '"': "&quot;",
-    "'": "&apos;",
-    ">": "&gt;",
-    "<": "&lt;",
-    "\n": "&#x0a",
-    "\r": "&#x0d",
+    "&":  "&amp;",
+    '"':  "&quot;",
+    "'":  "&apos;",
+    ">":  "&gt;",
+    "<":  "&lt;",
+    "\n": "&#x0a;",
+    "\r": "&#x0d;",
     }
 
 def _html_escape(text):
@@ -98,7 +110,7 @@ td
                 message = self._raw_table[offset][v]
                 bg,fg = self._generate_colors(message)
                 if not isinstance(message, str):
-                    message = message.decode('utf-8')
+                    message = message.decode('utf-8', 'decode_escape')
 
                 truncated = message[0:maxlen]
                 if len(message) > maxlen:
