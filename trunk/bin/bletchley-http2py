@@ -36,6 +36,8 @@ Author: Timothy D. Morgan
 
 import sys
 import argparse
+import pprint
+import urllib.parse
 
 bopen = lambda f: open(f, 'rb')
 
@@ -50,7 +52,8 @@ parser.add_argument(
     help='A file containing an HTTP request.  Defaults to stdin if omitted.')
 parser.add_argument(
     '--requests', action='store_true', help='Generate a script that uses the'
-    ' python-requests module rather than httplib/http.client (experimental).')
+    ' python-requests module rather than http.client (this will likely become'
+    ' the default in the future).')
 
 args = parser.parse_args()
 input_req = args.requestfile.read()
@@ -70,9 +73,8 @@ header_lines = raw_headers.split('\n')
 method,path,version = header_lines[0].split(' ', 2)
 
 host = 'TODO'
-port = 80
-use_ssl = False
-protocol = 'http'
+port = None
+protocol = None
 
 headers = []
 for l in header_lines[1:]:
@@ -102,12 +104,31 @@ for l in header_lines[1:]:
             host,port = value.split(':',1)
             port = int(port, 10)
             if port == 443:
-                use_ssl = True
                 protocol = 'https'
         else:
             host = value
 
+    # Attempt to guess the port and protocol from the referer header, since
+    # often it is the same site.  Defer to the host header though, if the
+    # info is there.
+    elif name.lower() == 'referer':
+        rurl = urllib.parse.urlparse(value)
+        if rurl.netloc == host:
+            if rurl.scheme == 'https' and protocol == None:
+                protocol = 'https'
+            if rurl.port != None and port == None:
+                port = rurl.port
 
+if protocol == None:
+    protocol == 'http'        
+if port == None:
+    if protocol == 'https':
+        port = 443
+    else:
+        port = 80
+
+
+# XXX: use pprint
 formatted_body = '\n            '.join([repr(body[i:i+40]) for i in range(0,len(body),40)])
 if formatted_body == '':
     formatted_body = "b''"
@@ -122,7 +143,7 @@ from bletchley import blobtools,buffertools
 from bletchley import chosenct
 from bletchley.CBC import *
 
-# TODO: ensure the host, port, and SSL settings are correct.
+# TODO: ensure the host, port, and protocol settings are correct.
 host = %s
 port = %s
 protocol = %s
@@ -168,8 +189,9 @@ def sendRequest(session, data=None):
     url = "%%s://%%s:%%d%%s" %% (protocol,host,port,path)
     body = (%s)
 
-    return session.request(method, url, headers=headers, data=body, allow_redirects=False)
-    ''' % (repr(method), repr(path), repr(headers), formatted_body))
+    # Set verify=True if you want to validate the server cert
+    return session.request(method, url, headers=headers, data=body, allow_redirects=False, verify=False)
+    ''' % (repr(method), repr(path), pprint.pformat(headers, indent=14), formatted_body))
 
     print('''    
 
@@ -184,6 +206,7 @@ def fetch(data, other=None):
 
     # These are useful for debugging, but once your response processing is working,
     # remove them so it isn't so verbose.
+    print(response.status_code)
     print(response.headers)
     print(repr(response.content))
 
@@ -191,10 +214,9 @@ def fetch(data, other=None):
 ''')
 
 
-
 else:
     print('''
-import http.client as httpc
+import http.client
 
 def sendRequest(connection, data=None):
     data = data.decode('utf-8')
@@ -223,10 +245,11 @@ def sendRequest(connection, data=None):
 
 
 def newConnection():
-    if use_ssl:
-        return httpc.HTTPSConnection(host, port)
+    global protocol
+    if protocol == 'https':
+        return http.client.HTTPSConnection(host, port)
     else:
-        return httpc.HTTPConnection(host, port)
+        return http.client.HTTPConnection(host, port)
 
 
 def fetch(data, other=None):
@@ -240,6 +263,7 @@ def fetch(data, other=None):
 
     # These are useful for debugging, but once your response processing is working,
     # remove them so it isn't so verbose.
+    print(response.status)
     print(response.getheaders())
     print(repr(response.read()))
 
