@@ -151,13 +151,13 @@ protocol = %s
 def decode(token):
     # TODO: Perhaps you needs something like this?
     #       (See 'bletchley-decode -e ?' for a list of encodings)
-    # return blobtools.decodeAll(['percent/mixed','base64/rfc3548'], token)
+    # return blobtools.decodeChain(['percent/mixed','base64/rfc3548'], token)
     return token
 
 
 def encode(binary):
     # TODO: Perhaps you needs something like this?
-    # return blobtools.encodeAll(['base64/rfc3548', 'percent/mixed'], binary)
+    # return blobtools.encodeChain(['base64/rfc3548', 'percent/mixed'], binary)
     return binary
 ''' % (repr(host),repr(port),repr(protocol)))
 

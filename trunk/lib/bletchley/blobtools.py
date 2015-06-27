@@ -30,9 +30,9 @@ from . import buffertools
 # urllib.parse's functions are not well suited for encoding/decoding
 # bytes or managing encoded case 
 def _percentEncode(binary, plus=False, upper=True):
-    fmt = "%%%.2X"
+    fmt = "%%%.2x"
     if upper:
-        fmt = "%%%.2x"
+        fmt = "%%%.2X"
 
     ret_val = bytearray(b'')
     for c in binary:
