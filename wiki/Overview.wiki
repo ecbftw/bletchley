@@ -31,7 +31,7 @@ occurs:
  process is repeated until no further encodings are detected</li>
 </ul>
 
-`bletchley-analyze` can read from stdin or from a file.  Tokens are
+<code>bletchley-analyze</code> can read from stdin or from a file.  Tokens are
 delimited with newlines.  Various options are provided to give the
 analyst control over the block sizes and encoding used during analysis.
 See the tool's usage statement for more information.
@@ -45,12 +45,12 @@ vTA9eA4hhbFlktsbYI4hIg%3D%3D
 meU8SyxVHE1lktsbYI4hIg%3D%3D
 }}}
 
-These tokens were then fed to `bletchley-analyze`:
+These tokens were then fed to <code>bletchley-analyze</code>:
 <img src="https://raw.githubusercontent.com/ecbftw/bletchley/master/wiki/images/bletchley-analyze.png" />
 
 1. <i>Bletchley's blobtools module currently supports 36 encoding variants,
 including various forms of hexadecimal, base32, base64, and percent
-encodings. Try '`-e ?`' to list them.</i>
+encodings. Try '<code>-e ?</code>' to list them.</i>
 
 
 == bletchley-encode ==
@@ -63,7 +63,7 @@ TWFsbG9yeSBJcyBNeSBGcmllbmQuCg%3D%3D
 
 NOTE: The encoding chain is applied from right to left in order to be consistent with other tools.  
 That is, one can use the same encoding chain ordering for 
-`bletchley-encode`, `bletchley-decode`, and `bletchley-analyze`.
+<code>bletchley-encode</code>, <code>bletchley-decode</code>, and <code>bletchley-analyze</code>.
 
 
 == bletchley-decode ==
@@ -84,13 +84,13 @@ browser.  For more information, see the script's usage statement.
 == bletchley-nextrand ==
 A simple program which computes the state of a Java Random class
 instance given two sequential outputs of 
-<a href="http://docs.oracle.com/javase/6/docs/api/java/util/Random.html#nextInt()">`nextInt()`</a>.
+<a href="http://docs.oracle.com/javase/6/docs/api/java/util/Random.html#nextInt()"><code>nextInt()</code></a>.
 For more information, see the usage statement.
 
 
 = Libraries =
 
-Start with '`pydoc3 bletchley`'.  The following provides a brief overview of what each module is for.
+Start with '<code>pydoc3 bletchley</code>'.  The following provides a brief overview of what each module is for.
 
 
 == blobtools ==
@@ -111,7 +111,7 @@ In particular, it contains the POA class which automates padding oracle
 attacks.  To use the POA class, one simply needs to implement a function
 in Python 3 which submits a request to an oracle and returns True if the
 padding check was successful and False otherwise.  See 
-'`pydoc3 bletchley.CBC.POA`' for more details.
+'<code>pydoc3 bletchley.CBC.POA</code>' for more details.
 
 
 = Support =
@@ -125,5 +125,5 @@ ask on the <a href="https://groups.google.com/d/forum/bletchley-devel">email lis
 We welcome any kind of help with the project, from new tools to bug
 fixes and documentation.  You might want to start with our 
 <a href="https://github.com/ecbftw/bletchley/blob/master/trunk/doc/TODO">TODO</a>
-list. To submit a patch, just check out a copy of our Subversion
-repository, make your changes, and submit the output of `svn diff` to one of the project leaders.
+list.  Note that the GitHub repository is currently just a static mirror, so please don't submit pull requests.
+To submit a patch, please post an issue or submit it to the <a href="https://groups.google.com/d/forum/bletchley-devel">email list</a> and we'll merge it.
