@@ -1,8 +1,5 @@
 Here you will find a brief overview of the tools and libraries provided by Bletchley.  For further details, see the individual tool usage statements, pydoc documentation, and of course the <a href="https://github.com/ecbftw/bletchley">source code</a>.
 
-*Contents*
-<wiki:toc max_depth="2" />
-
 = Installation = 
 See: <a href="https://github.com/ecbftw/bletchley/blob/master/trunk/INSTALL">INSTALL</a>
 
