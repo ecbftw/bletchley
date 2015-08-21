@@ -1,10 +1,10 @@
-Here you will find a brief overview of the tools and libraries provided by Bletchley.  For further details, see the individual tool usage statements, pydoc documentation, and of course the <a href="https://code.google.com/p/bletchley/source/browse/trunk/">source code</a>.
+Here you will find a brief overview of the tools and libraries provided by Bletchley.  For further details, see the individual tool usage statements, pydoc documentation, and of course the <a href="https://github.com/ecbftw/bletchley">source code</a>.
 
 *Contents*
 <wiki:toc max_depth="2" />
 
 = Installation = 
-See: <a href="https://code.google.com/p/bletchley/source/browse/trunk/INSTALL">INSTALL</a>
+See: <a href="https://github.com/ecbftw/bletchley/blob/master/trunk/INSTALL">INSTALL</a>
 
 = Command Line Tools =
 
@@ -49,7 +49,7 @@ meU8SyxVHE1lktsbYI4hIg%3D%3D
 }}}
 
 These tokens were then fed to `bletchley-analyze`:
-<img src="https://bletchley.googlecode.com/svn/wiki/images/bletchley-analyze.png" />
+<img src="https://raw.githubusercontent.com/ecbftw/bletchley/master/wiki/images/bletchley-analyze.png" />
 
 1. <i>Bletchley's blobtools module currently supports 36 encoding variants,
 including various forms of hexadecimal, base32, base64, and percent
@@ -119,7 +119,7 @@ padding check was successful and False otherwise.  See
 
 = Support =
 
-Having trouble?  Submit an issue <a href="https://code.google.com/p/bletchley/issues/list">here</a>, or 
+Having trouble?  Submit an issue <a href="https://github.com/ecbftw/bletchley/issues">here</a>, or 
 ask on the <a href="https://groups.google.com/d/forum/bletchley-devel">email list</a>.
 
 
@@ -127,6 +127,6 @@ ask on the <a href="https://groups.google.com/d/forum/bletchley-devel">email lis
 
 We welcome any kind of help with the project, from new tools to bug
 fixes and documentation.  You might want to start with our 
-<a href="https://code.google.com/p/bletchley/source/browse/trunk/doc/TODO">TODO</a>
+<a href="https://github.com/ecbftw/bletchley/blob/master/trunk/doc/TODO">TODO</a>
 list. To submit a patch, just check out a copy of our Subversion
 repository, make your changes, and submit the output of `svn diff` to one of the project leaders.

@@ -14,5 +14,4 @@ As the framework matures, the following additional features are currently antici
   * Tools to analyze and exploit other flaws, such as asymmetric algorithm and hash misuse
 
 
-For more information on the specific tools, see the <a href="https://code.google.com/p/bletchley/wiki/Overview">documentation</a>.  Bletchley is maintained by 
-<a href="http://vsecurity.com/">VSR</a>, though code/testing contributions are greatly appreciated.
+For more information on the specific tools, see the <a href="https://github.com/ecbftw/bletchley/blob/master/wiki/Overview.wiki">documentation</a>.  Bletchley was created by pentesters at <a href="http://vsecurity.com/">VSR</a> and is now maintained by <a href="https://blindspotsecurity.com/">Blindspot Security</a>.  Note that contributions (patches, testing, bug reports) are greatly appreciated.
