@@ -1,7 +1,7 @@
 '''
 Utilities for manipulating certificates and SSL/TLS connections.
 
-Copyright (C) 2016 Blindspot Security LLC
+Copyright (C) 2014,2016 Blindspot Security LLC
 Author: Timothy D. Morgan
 
  This program is free software: you can redistribute it and/or modify
@@ -146,11 +146,11 @@ def genFakeKey(certificate):
 
 
 def getDigestAlgorithm(certificate):
-    # XXX: ugly hack because pyopenssl API for this is limited
-    if b'md5' in certificate.get_signature_algorithm():
-        return 'md5'
-    else:
-        return 'sha1'
+    # XXX: ugly hack because openssl API for this is limited
+    algo = certificate.get_signature_algorithm()
+    if b'With' in algo:
+        return algo.split(b'With', 1)[0].decode('utf-8')
+    return None
 
 
 def deleteExtension(certificate, index):
