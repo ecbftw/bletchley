@@ -207,4 +207,3 @@ def probe_bytes(checker, ciphertext, values, max_threads=1):
 def probe_worker(checker, prefix, suffix, target, value_subset, results):
     for v in value_subset:
         results.put({v:checker(prefix+bytearray((v^target,))+suffix)})
-
